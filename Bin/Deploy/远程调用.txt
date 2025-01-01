@@ -1,0 +1,15 @@
+﻿*.base64_text
+  1.文本为utf-8,base64编码
+  2.再进行一次 url_encode 编码
+例如: 
+  *.我是中文 -> 5oiR5piv5Lit5paH -> 5oiR5piv5Lit5paH
+  *.我是千音合成系统 -> 5oiR5piv5Y2D6Z+z5ZCI5oiQ57O757uf -> 5oiR5piv5Y2D6Z%2bz5ZCI5oiQ57O757uf
+
+1.目的: 文本转语音
+  方法: http://ip:8000/tts?data=base64_text
+  
+2.目的: 文本转语音 + 使用模板
+  方法: http://ip:8000/tts?data=base64_text & modal=modal_name
+
+3.目的: 变量 + 使用模板
+  方法: http://ip:8000/tts?key1=base64_value1 & key2=base64_value2 & modal=modal_name
