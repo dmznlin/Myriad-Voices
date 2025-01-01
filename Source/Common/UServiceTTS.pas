@@ -347,7 +347,7 @@ begin
       FLast := 0;
       FRunTime := 0;
 
-      FChan := 0;
+      FChan := nil;
       FData := nMsg;
       FModal := nMData;
     end;
@@ -387,7 +387,7 @@ begin
         if ((nTmp.FModal.FLoopTime < 1) or //不循环
           (nTmp.FModal.FLoopTime <= nTmp.FRunTime)) then //已循环结束
         begin
-          if gEqualizer.ChanIdle(nTmp.FChan) then  //通道空闲
+          if gEqualizer.ChanIdle(nTmp.FChan, False) then  //通道空闲
           begin
             nTmp.FUsed := False;
             gEqualizer.FreeChan(nTmp.FChan.FID);
@@ -396,7 +396,7 @@ begin
           Continue;
         end;
 
-        if not gEqualizer.ChanIdle(nTmp.FChan) then
+        if not gEqualizer.ChanIdle(nTmp.FChan, False) then
           Continue;
         //上次播放未结束
       end;
@@ -428,7 +428,7 @@ begin
     end
     else
     begin
-      nData.FChan := gEqualizer.NewChan('');
+      nData.FChan := gEqualizer.NewChan();
       //首次运行
       PlayVoice(nData.FChan, @nData.FModal, nData.FData);
     end;
@@ -491,7 +491,7 @@ begin
   begin
     nMsg := StringReplace(nMsg, '$hr', nH.ToString, [rfReplaceAll, rfIgnoreCase]);
     //替换小时变量
-    PlayVoice(gEqualizer.FindChan(gEqualizer.FirstChan), @nModal, nMsg);
+    PlayVoice(gEqualizer.FirstChan, @nModal, nMsg);
   end;
 end;
 
@@ -502,7 +502,6 @@ function TVoiceManager.PlayVoice(nChan: PEqualizerChan; nModal: PEqualizerModal;
   nText: string): Boolean;
 var
   nStr: string;
-  nIdx: Integer;
   nClient: TIdHTTP;
   nBuf: TMemoryStream;
 begin
@@ -519,51 +518,52 @@ begin
     Exit;
   end;
 
+  nText := Trim(nText);
+  if nText = '' then
+  begin
+    nText := nModal.FDemoText;
+    //演示文本
+
+    if nText = '' then
+    begin
+      WriteLog('PlayVoice: 无效的文本内容.');
+      Exit;
+    end;
+  end;
+
+  WriteLog(nText);
+  //logged
+
+  nStr := FRemoteURL + 'forward?text=' + nText;
+  if nModal.FSpeed > 0 then
+    nStr := nStr + '&speed=' + IntToStr(nModal.FSpeed);
+  //xxxxx
+
+  if nModal.FVolume > 0 then
+    nStr := nStr + '&volume=' + IntToStr(nModal.FVolume);
+  //xxxxx
+
+  if nModal.FPitch > 0 then
+    nStr := nStr + '&pitch=' + IntToStr(nModal.FPitch);
+  //xxxxx
+
+  if nModal.FVoice <> '' then
+    nStr := nStr + '&voice=' + nModal.FVoice;
+  //xxxxx
+
+  nStr := TIdURI.URLEncode(nStr);
+  //request url
+
+  //----------------------------------------------------------------------------
   nBuf := nil;
   nClient := nil; //init object
   try
-    nText := Trim(nText);
-    if nText = '' then
-    begin
-      nText := nModal.FDemoText;
-      //演示文本
-
-      if nText = '' then
-      begin
-        WriteLog('PlayVoice: 无效的文本内容.');
-        Exit;
-      end;
-    end;
-
-    WriteLog(nText);
-    //logged
-
-    //------------------------------------------------------------------------------
-    nStr := FRemoteURL + 'forward?text=' + nText;
-    if nModal.FSpeed > 0 then
-      nStr := nStr + '&speed=' + IntToStr(nModal.FSpeed);
-      //xxxxx
-
-    if nModal.FVolume > 0 then
-      nStr := nStr + '&volume=' + IntToStr(nModal.FVolume);
-      //xxxxx
-
-    if nModal.FPitch > 0 then
-      nStr := nStr + '&pitch=' + IntToStr(nModal.FPitch);
-      //xxxxx
-
-    if nModal.FVoice <> '' then
-      nStr := nStr + '&voice=' + nModal.FVoice;
-      //xxxxx
-
-    nStr := TIdURI.URLEncode(nStr);
-    //request url
-
+    nBuf := TMemoryStream.Create;
     nClient := gMG.FObjectPool.Lock(TIdHTTP) as TIdHTTP;
     nClient.ConnectTimeout := cTimeoutConn;
     try
-      nBuf := TMemoryStream.Create;
       nClient.Get(nStr, nBuf);
+      //remote tts
 
       if nBuf.Size > 0 then
       try
@@ -574,12 +574,13 @@ begin
         nChan.FHandle := BASS_StreamCreateFile(True, nBuf.Memory, 0, nBuf.Size,
             BASS_SAMPLE_FX{$IFDEF UNICODE} or BASS_UNICODE {$ENDIF});
         //2.加载新数据
-        if nChan.FHandle = cChan_Invlid then
+        if not gEqualizer.ChanValid(nChan) then
           raise Exception.Create('通道无法加载语音流.');
         //xxxxx
 
         if not gEqualizer.InitEqualizer(nChan.FID) then
-          Exit;
+          raise Exception.Create('通道无法设置均衡器.');
+        //xxxxx
         gEqualizer.SetEqualizer(nChan.FID, 0, cEqualizer_All);
         //3.设置均衡
 
@@ -593,6 +594,7 @@ begin
       on nErr: Exception do
       begin
         WriteLog('PlayVoice: ' + nErr.Message);
+        Exit;
       end;
     end;
   finally

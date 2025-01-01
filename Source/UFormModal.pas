@@ -266,7 +266,7 @@ end;
 
 procedure TfFormModal.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  gEqualizer.FreeChan(gEqualizer.FirstChan, True);
+  gEqualizer.FreeChan(gEqualizer.FirstChan.FID, True);
   TApplicationHelper.SaveFormConfig(Self);
 end;
 
@@ -372,14 +372,11 @@ end;
 //Date: 2024-12-24
 //Desc: ≤‚ ‘ƒ£∞Â
 procedure TfFormModal.BtnTestClick(Sender: TObject);
-var
-  nDemo: PEqualizerChan;
 begin
   if ApplyModal(False) then
   try
     BtnTest.Enabled := False;
-    nDemo := gEqualizer.FindChan(gEqualizer.FirstChan);
-    gVoiceManager.PlayVoice(nDemo, @FModal, FModal.FDemoText);
+    gVoiceManager.PlayVoice(gEqualizer.FirstChan, @FModal, FModal.FDemoText);
   finally
     BtnTest.Enabled := True;
   end;

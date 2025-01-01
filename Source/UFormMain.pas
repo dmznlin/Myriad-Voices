@@ -1,5 +1,4 @@
-
-  {*******************************************************************************
+{*******************************************************************************
   作者: dmzn@163.com 2024-12-16
   描述: 千音TTS主单元
 *******************************************************************************}
@@ -115,8 +114,9 @@ implementation
 {$R *.dfm}
 
 uses
-  System.IniFiles, System.Win.Registry, cxPCPainters, ULibFun, UManagerGroup,
-  UWaitIndicator, UFormModal, UEqualizer, UServiceTTS, bass, USysConst;
+  System.IniFiles, System.Win.Registry, System.SyncObjs, cxPCPainters, ULibFun,
+  UManagerGroup, UWaitIndicator, UBaseObject, UFormModal, UEqualizer,
+  UServiceTTS, bass, USysConst;
 
 procedure WriteLog(const nEvent: string);
 begin
@@ -286,9 +286,6 @@ begin
   end;
   {$ENDIF}
 
-  CheckSrv.Checked := False;
-  //停止服务
-
   nIni := TIniFile.Create(TApplicationHelper.gFormConfig);
   try
     //ui
@@ -329,6 +326,9 @@ begin
   finally
     nReg.Free;
   end;
+
+  CheckSrv.Checked := False;
+  //停止服务
 
   //equalize and modals
   if gEqualizer.ConfigChanged then
@@ -418,9 +418,31 @@ begin
 end;
 
 procedure TfFormMain.BtnStatusClick(Sender: TObject);
+var
+  nIdx, nNum: Integer;
 begin
   MemoLog.Clear;
+  with TObjectStatusHelper do
+  try
+    gEqualizer.SyncLock.Enter;
+    AddTitle(MemoLog.Lines, TVoiceManager.ClassName);
+    nNum := 0;
+
+    for nIdx := gEqualizer.Channels.Count - 1 downto 0 do
+      if PEqualizerChan(gEqualizer.Channels[nIdx]).FUsed then
+        Inc(nNum);
+    //xxxxx
+
+    MemoLog.Lines.Add(FixData('模板:', gEqualizer.Modals.Count));
+    MemoLog.Lines.Add(FixData('通道:', nNum.ToString + '/' +
+        gEqualizer.Channels.Count.ToString));
+    //xxxxx
+  finally
+    gEqualizer.SyncLock.Leave;
+  end;
+
   gMG.GetManagersStatus(MemoLog.Lines);
+  //manager status
 end;
 
 procedure TfFormMain.BtnCopyClick(Sender: TObject);
@@ -595,7 +617,8 @@ begin
 
   if FSample = 0 then
   begin
-    FSample := gEqualizer.NewChan(gPath + 'sample.wav').FID;
+    FSample := gEqualizer.NewChan().FID;
+    gEqualizer.ChanFile(nil, gPath + 'sample.wav', FSample);
     gEqualizer.InitEqualizer(FSample);
   end;
 

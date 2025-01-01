@@ -72,7 +72,7 @@ type
     {*标识*}
     FChannels: TList;
     {*通道列表*}
-    FChanFirst: Cardinal;
+    FChanFirst: PEqualizerChan;
     {*首个通道*}
     FParam: BASS_DX8_PARAMEQ;
     FRever: BASS_DX8_REVERB;
@@ -84,7 +84,7 @@ type
     FSyncLock: TCriticalSection;
     {*同步锁定*}
   protected
-    function GetChan(const id: Cardinal; const nFree: Boolean): Integer;
+    function GetChan(const id: Cardinal; nNoUsed: Boolean): Integer;
     function GetModal(const nID: string; const nDef: Boolean): PEqualizerModal;
     {*检索数据*}
     procedure DisposeChan(const nIdx: Integer; nFree, nClear: Boolean);
@@ -100,13 +100,15 @@ type
     class function InitBassLibrary: Boolean;
     class procedure FreeBassLibrary;
     {*bass库*}
-    function NewChan(const nFile: string): PEqualizerChan;
+    function NewChan(): PEqualizerChan;
     function FindChan(const id: Cardinal): PEqualizerChan;
     procedure PlayChan(const id: Cardinal);
     procedure FreeChan(const id: Cardinal; nClearOnly: Boolean = False);
     {*通道管理*}
+    function ChanFile(chan: PEqualizerChan; nFile: string; id: Cardinal = 0):
+      Boolean;
     function ChanValid(const chan: PEqualizerChan): Boolean;
-    function ChanIdle(const chan: PEqualizerChan): Boolean;
+    function ChanIdle(const chan: PEqualizerChan; nMustValid: Boolean): Boolean;
     {*通道狀態*}
     function InitEqualizer(const id: Cardinal): Boolean;
     {*初始化均衡*}
@@ -118,7 +120,7 @@ type
     {*语音模板*}
     property Modals: TList read FModals;
     property Channels: TList read FChannels;
-    property FirstChan: Cardinal read FChanFirst;
+    property FirstChan: PEqualizerChan read FChanFirst;
     property ConfigChanged: Boolean read FChanged;
     property EqualizerData: TEqualizerData read FData;
     property SyncLock: TCriticalSection read FSyncLock;
@@ -153,7 +155,7 @@ begin
   FModals := TList.Create;
   FSyncLock := TCriticalSection.Create;
 
-  FChanFirst := NewChan('').FID;
+  FChanFirst := NewChan();
   //default chan
 end;
 
@@ -206,7 +208,7 @@ end;
 //Date: 2024-12-20
 //Parm: 标识;未使用的
 //Desc: 检索chan通道的索引
-function TEqualizer.GetChan(const id: Cardinal; const nFree: Boolean): Integer;
+function TEqualizer.GetChan(const id: Cardinal; nNoUsed: Boolean): Integer;
 var
   nIdx: Integer;
   nChan: PEqualizerChan;
@@ -217,7 +219,7 @@ begin
   for nIdx := 0 to FChannels.Count - 1 do
   begin
     nChan := FChannels[nIdx];
-    if nFree then
+    if nNoUsed then
     begin
       if not nChan.FUsed then
       begin
@@ -244,16 +246,16 @@ var
   nChan: PEqualizerChan;
 begin
   nChan := FChannels[nIdx];
-  if nChan.FUsed and (nChan.FHandle <> cChan_Invlid) then
+  if ChanValid(nChan) then
   begin
     BASS_MusicFree(nChan.FHandle);
     BASS_StreamFree(nChan.FHandle); //free resource
     nChan.FHandle := cChan_Invlid;
-
-    if Assigned(nChan.FMemory) then
-      FreeAndNil(nChan.FMemory);
-    //xxxxx
   end;
+
+  if Assigned(nChan.FMemory) then
+    FreeAndNil(nChan.FMemory);
+  //xxxxx
 
   if nFree then
   begin
@@ -328,9 +330,8 @@ end;
 //Date: 2024-12-20
 //Parm: wav文件
 //Desc: 新建通道
-function TEqualizer.NewChan(const nFile: string): PEqualizerChan;
+function TEqualizer.NewChan(): PEqualizerChan;
 var
-  nStr: string;
   nIdx: Integer;
 begin
   FSyncLock.Enter;
@@ -353,27 +354,6 @@ begin
   finally
     FSyncLock.Leave;
   end;
-
-  if nFile = '' then
-    Exit;
-  //invalid
-
-  nStr := ExtractFileName(nFile);
-  if not FileExists(nFile) then
-  begin
-    WriteLog(Format('声音文件"%s"不存在.', [nStr]));
-    Exit;
-  end;
-
-  Result.FHandle := BASS_StreamCreateFile(FALSE, PChar(nFile), 0, 0, BASS_SAMPLE_FX
-      {$IFDEF UNICODE} or BASS_UNICODE {$ENDIF});
-  //xxxxx
-
-  if Result.FHandle = cChan_Invlid then
-  begin
-    WriteLog(Format('加载声音文件"%s"失败.', [nStr]));
-    Exit;
-  end;
 end;
 
 //Date: 2024-12-20
@@ -385,7 +365,7 @@ var
 begin
   Result := False;
   nChan := FindChan(id);
-  if not (Assigned(nChan) and (nChan.FHandle <> cChan_Invlid)) then
+  if not ChanValid(nChan) then
     Exit;
   //invalid chan
 
@@ -433,8 +413,7 @@ var
   nAction: TProc<Integer, Integer>;
 begin
   nChan := FindChan(id);
-  if not (Assigned(nChan) and
-    (nChan.FHandle <> cChan_Invlid) and nChan.FInitVal) then
+  if not (ChanValid(nChan) and nChan.FInitVal) then
     Exit;
   //invalid chan
 
@@ -516,17 +495,18 @@ var
   nChan: PEqualizerChan;
 begin
   nChan := FindChan(id);
-  if ChanIdle(nChan) then
+  if ChanIdle(nChan, True) then
     BASS_ChannelPlay(nChan.FHandle, False);
   //xxxxx
 end;
 
 //Date: 2024-12-31
-//Parm: 通道
+//Parm: 通道;通道必须有效
 //Desc: 通道是否空闲
-function TEqualizer.ChanIdle(const chan: PEqualizerChan): Boolean;
+function TEqualizer.ChanIdle(const chan: PEqualizerChan; nMustValid: Boolean):
+  Boolean;
 begin
-  Result := False;
+  Result := not nMustValid;
   if ChanValid(chan) then
     Result := BASS_ChannelIsActive(chan.FHandle) = BASS_ACTIVE_STOPPED;
   //xxxxx
@@ -538,6 +518,49 @@ end;
 function TEqualizer.ChanValid(const chan: PEqualizerChan): Boolean;
 begin
   Result := Assigned(chan) and (chan.FHandle <> cChan_Invlid);
+end;
+
+//Date: 2025-01-01
+//Parm: 通道;文件;标识
+//Desc: 使用chan通道加载nFile文件
+function TEqualizer.ChanFile(chan: PEqualizerChan; nFile: string; id: Cardinal):
+  Boolean;
+var
+  nStr: string;
+begin
+  Result := False;
+  nStr := ExtractFileName(nFile);
+
+  if not FileExists(nFile) then
+  begin
+    WriteLog(Format('声音文件"%s"不存在.', [nStr]));
+    Exit;
+  end;
+
+  if not Assigned(chan) then
+  begin
+    chan := FindChan(id);
+    if not Assigned(chan) then
+    begin
+      WriteLog(Format('ChanFile: 通道[ %d ]不存在.', [id]));
+      Exit;
+    end;
+  end;
+
+  if ChanValid(chan) then
+    FreeChan(chan.FID, True);
+  //clear first
+
+  chan.FHandle := BASS_StreamCreateFile(FALSE, PChar(nFile), 0, 0, BASS_SAMPLE_FX
+      {$IFDEF UNICODE} or BASS_UNICODE {$ENDIF});
+  //xxxxx
+
+  Result := ChanValid(chan);
+  if not Result then
+  begin
+    WriteLog(Format('加载声音文件"%s"失败.', [nStr]));
+    Exit;
+  end;
 end;
 
 //------------------------------------------------------------------------------
