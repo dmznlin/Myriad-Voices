@@ -41,9 +41,7 @@ type
     {*语音*}
     FRemoteURL: string;
     {*服务地址*}
-    FStrickHour: Integer;
-    FStrickHourHalf: Integer;
-    FStrickChan: DWORD;
+    FStrickNext: TDateTime;
     {*整点报时*}
     FWorker: TThreadWorkerConfig;
     {*工作线程*}
@@ -55,7 +53,8 @@ type
     {*释放资源*}
     procedure SetRemoteURL(nURL: string);
     {*设置参数*}
-    procedure DoStruckHour();
+    function NextStrickTime(const nNow: Boolean): TDateTime;
+    procedure DoStrickHour();
     procedure DoPlay(const nCfg: PThreadWorkerConfig; const nThread: TThread);
     {*线程播放*}
   public
@@ -84,8 +83,8 @@ var
 implementation
 
 uses
-  IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient, IdHTTP, IdURI,
-  superobject, ULibFun, UManagerGroup;
+  System.DateUtils, IdBaseComponent, IdComponent, IdTCPConnection, IdTCPClient,
+  IdHTTP, IdURI, superobject, ULibFun, UManagerGroup;
 
 const
   {*超时设置*}
@@ -109,11 +108,6 @@ begin
       TIdHTTP(nObject).Free;
     end, nil, True);
   //xxxxx
-
-  FStrickHour := -1;
-  FStrickHourHalf := -1;
-  FStrickChan := cChan_Invlid;
-  //init variant
 
   FVoices := TList.Create;
   FDataList := TList.Create;
@@ -197,6 +191,8 @@ end;
 
 procedure TVoiceManager.StartService;
 begin
+  FStrickNext := NextStrickTime(True);
+  //报时初始化
   gMG.FThreadPool.WorkerStart(Self);
   FWorker.FCallTimes := INFINITE;
 end;
@@ -208,6 +204,7 @@ begin
   FWorker.FCallTimes := 0;
 end;
 
+//------------------------------------------------------------------------------
 //Date: 2024-12-23
 //Desc: 载入角色列表
 function TVoiceManager.LoadVoice: Boolean;
@@ -369,7 +366,8 @@ var
   nIdx: Integer;
   nData, nTmp: PVoiceData;
 begin
-  DoStruckHour();
+  if Now() >= FStrickNext then
+    DoStrickHour();
   //整点报时
   nData := nil;
 
@@ -442,20 +440,18 @@ end;
 
 //Date: 2024-12-31
 //Desc: 执行整点报时
-procedure TVoiceManager.DoStruckHour;
+procedure TVoiceManager.DoStrickHour;
 var
   nMsg: string;
   nH, nM, nS, nMS: Word;
   nModal: TEqualizerModal;
 begin
+  FStrickNext := NextStrickTime(False);
   nMsg := '';
   DecodeTime(Time(), nH, nM, nS, nMS);
 
-  if (nM = 0) and (nH <> FStrickHour) then //整点
+  if nM = 0 then //整点
   begin
-    FStrickHour := nH;
-    //set tag
-
     nModal := gEqualizer.FindModal('');
     if not (nModal.FEnabled and nModal.FOnHour) then
       Exit;
@@ -469,11 +465,8 @@ begin
     end;
   end;
 
-  if (nM = 30) and (nH <> FStrickHourHalf) then //半点
+  if nM = 30 then //半点
   begin
-    FStrickHourHalf := nH;
-    //set tag
-
     nModal := gEqualizer.FindModal('');
     if not (nModal.FEnabled and nModal.FOnHalfHour) then
       Exit;
@@ -493,6 +486,34 @@ begin
     //替换小时变量
     PlayVoice(gEqualizer.FirstChan, @nModal, nMsg);
   end;
+end;
+
+//Date: 2025-01-02
+//Parm: 是否包含当前时间
+//Desc: 依据当前时间,计算下次报时时间
+function TVoiceManager.NextStrickTime(const nNow: Boolean): TDateTime;
+var
+  nH, nM, nS, nMS: Word;
+begin
+  DecodeTime(Time(), nH, nM, nS, nMS);
+  if nNow and ((nM = 0) or (nM = 30)) then
+  begin
+    Result := Date() + EncodeTime(nH, nM, 0, 0);
+    //当前时间:整点,半点
+  end
+  else if nM < 30 then
+  begin
+    Result := Date() + EncodeTime(nH, 30, 0, 0);
+    //下次为半点
+  end
+  else
+  begin
+    Result := IncMinute(Now(), 30); //可能跨天
+    DecodeTime(Result, nH, nM, nS, nMS);
+    Result := DateOf(Result) + EncodeTime(nH, 0, 0, 0); //整点
+  end;
+
+  WriteLog('下次报时 ' + TDateTimeHelper.Time2Str(Result));
 end;
 
 //Date: 2024-12-24
