@@ -100,6 +100,7 @@ object fFormModal: TfFormModal
     object EditHour: TcxTextEdit
       Left = 22
       Top = 156
+      Properties.MaxLength = 800
       TabOrder = 9
       Text = #29616#22312#26159#21271#20140#26102#38388' $hr:00'
       Width = 330
@@ -107,6 +108,7 @@ object fFormModal: TfFormModal
     object EditHalf: TcxTextEdit
       Left = 22
       Top = 206
+      Properties.MaxLength = 800
       TabOrder = 10
       Text = #29616#22312#26159#21271#20140#26102#38388' $hr:30'
       Width = 330
@@ -196,6 +198,7 @@ object fFormModal: TfFormModal
     object EditDemo: TcxTextEdit
       Left = 72
       Top = 351
+      Properties.MaxLength = 800
       TabOrder = 20
       Text = #25105#26159#21315#38899#25991#26412#36716#35821#38899#21512#25104#31995#32479'.'
       Width = 215

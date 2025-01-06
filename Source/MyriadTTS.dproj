@@ -125,6 +125,10 @@
             <Form>fFormModal</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="UFormTask.pas">
+            <Form>fFormTask</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
@@ -157,7 +161,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win32\Debug\MyriadTTS.exe" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\Bin\MyriadTTS.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>MyriadTTS.exe</RemoteName>
                         <Overwrite>true</Overwrite>

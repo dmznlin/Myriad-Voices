@@ -930,7 +930,7 @@ object fFormMain: TfFormMain
         Width = 559
         object TreeDevices: TcxTreeView
           Left = 2
-          Top = 47
+          Top = 17
           Width = 555
           Height = 171
           Align = alClient
@@ -945,11 +945,11 @@ object fFormMain: TfFormMain
         end
         object dxPanel2: TdxPanel
           Left = 2
-          Top = 17
+          Top = 188
           Width = 555
           Height = 30
-          Align = alTop
-          Frame.Borders = [bBottom]
+          Align = alBottom
+          Frame.Borders = [bTop]
           TabOrder = 1
           DesignSize = (
             555
@@ -983,16 +983,16 @@ object fFormMain: TfFormMain
         Width = 559
         object dxPanel3: TdxPanel
           Left = 2
-          Top = 17
+          Top = 188
           Width = 555
           Height = 30
-          Align = alTop
-          Frame.Borders = [bBottom]
+          Align = alBottom
+          Frame.Borders = [bTop]
           TabOrder = 0
           DesignSize = (
             555
             29)
-          object BtnDel: TcxButton
+          object BtnDelModal: TcxButton
             Left = 500
             Top = 4
             Width = 55
@@ -1000,9 +1000,9 @@ object fFormMain: TfFormMain
             Anchors = [akTop, akRight]
             Caption = #21024#38500
             TabOrder = 0
-            OnClick = BtnDelClick
+            OnClick = BtnDelModalClick
           end
-          object BtnAdd: TcxButton
+          object BtnAddModal: TcxButton
             Left = 442
             Top = 4
             Width = 55
@@ -1010,12 +1010,12 @@ object fFormMain: TfFormMain
             Anchors = [akTop, akRight]
             Caption = #28155#21152
             TabOrder = 1
-            OnClick = BtnAddClick
+            OnClick = BtnAddModalClick
           end
         end
         object ListModals: TcxListView
           Left = 2
-          Top = 47
+          Top = 17
           Width = 555
           Height = 171
           Hint = #32534#36753': '#21452#20987#21015#34920#20013#30340#34892
@@ -1153,6 +1153,98 @@ object fFormMain: TfFormMain
           Transparent = True
           Height = 25
           Width = 210
+        end
+      end
+    end
+    object SheetTask: TcxTabSheet
+      Caption = #25773#25918#35745#21010
+      ImageIndex = 15
+      DesignSize = (
+        584
+        349)
+      object cxGroupBox1: TcxGroupBox
+        Left = 12
+        Top = 12
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Caption = #35745#21010#28165#21333
+        TabOrder = 0
+        Height = 333
+        Width = 559
+        object dxPanel4: TdxPanel
+          Left = 2
+          Top = 301
+          Width = 555
+          Height = 30
+          Align = alBottom
+          Frame.Borders = [bTop]
+          TabOrder = 0
+          DesignSize = (
+            555
+            29)
+          object BtnDelTask: TcxButton
+            Left = 500
+            Top = 4
+            Width = 55
+            Height = 22
+            Anchors = [akTop, akRight]
+            Caption = #21024#38500
+            TabOrder = 0
+            OnClick = BtnDelTaskClick
+          end
+          object BtnAddTask: TcxButton
+            Left = 442
+            Top = 4
+            Width = 55
+            Height = 22
+            Anchors = [akTop, akRight]
+            Caption = #28155#21152
+            TabOrder = 1
+            OnClick = BtnAddTaskClick
+          end
+        end
+        object ListTasks: TcxListView
+          Left = 2
+          Top = 17
+          Width = 555
+          Height = 284
+          Hint = #32534#36753': '#21452#20987#21015#34920#20013#30340#34892
+          Align = alClient
+          Columns = <
+            item
+              Caption = #21517#31216
+            end
+            item
+              Alignment = taCenter
+              Caption = #26085#26399' / '#26102#38388
+              Width = 85
+            end
+            item
+              Alignment = taCenter
+              Caption = #25773#25918#26041#24335
+              Width = 85
+            end
+            item
+              Alignment = taCenter
+              Caption = #27169#26495
+              Width = 85
+            end
+            item
+              Alignment = taCenter
+              Caption = #20869#23481
+              Width = 85
+            end>
+          ParentShowHint = False
+          ReadOnly = True
+          RowSelect = True
+          ShowHint = True
+          SmallImages = FDM.Images16
+          Style.BorderStyle = cbsNone
+          Style.Edges = [bLeft, bTop, bRight, bBottom]
+          StyleFocused.BorderStyle = cbsNone
+          StyleHot.BorderStyle = cbsNone
+          TabOrder = 1
+          ViewStyle = vsReport
+          OnDblClick = ListTasksDblClick
         end
       end
     end

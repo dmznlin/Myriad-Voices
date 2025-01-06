@@ -20,6 +20,7 @@ const
   cImg_female = 10;
   cImg_lang = 11;
   cImg_Modal = 12;
+  cImg_Task = 14;
 
 type
   TFDM = class(TDataModule)

@@ -9,7 +9,8 @@ uses
   UEqualizer in 'Common\UEqualizer.pas',
   UServiceTTS in 'Common\UServiceTTS.pas',
   USysConst in 'Common\USysConst.pas',
-  UFormModal in 'UFormModal.pas' {fFormModal};
+  UFormModal in 'UFormModal.pas' {fFormModal},
+  UFormTask in 'UFormTask.pas' {fFormTask};
 
 {$R *.res}
 var

@@ -51,7 +51,7 @@ type
     TimerDelay: TTimer;
     cxGroupBox3: TcxGroupBox;
     dxPanel3: TdxPanel;
-    BtnDel: TcxButton;
+    BtnDelModal: TcxButton;
     cxGroupBox4: TcxGroupBox;
     Track125: TcxTrackBar;
     cxLabel1: TcxLabel;
@@ -62,10 +62,16 @@ type
     cxLabel4: TcxLabel;
     TrackRever: TcxTrackBar;
     ListModals: TcxListView;
-    BtnAdd: TcxButton;
+    BtnAddModal: TcxButton;
     cxLabel5: TcxLabel;
     EditThemes: TcxImageComboBox;
     BtnStatus: TcxButton;
+    SheetTask: TcxTabSheet;
+    cxGroupBox1: TcxGroupBox;
+    dxPanel4: TdxPanel;
+    BtnDelTask: TcxButton;
+    BtnAddTask: TcxButton;
+    ListTasks: TcxListView;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TimerNowTimer(Sender: TObject);
@@ -80,12 +86,15 @@ type
     procedure wPage1PageChanging(Sender: TObject; NewPage: TcxTabSheet; var
       AllowChange: Boolean);
     procedure EditThemesPropertiesChange(Sender: TObject);
-    procedure BtnAddClick(Sender: TObject);
-    procedure BtnDelClick(Sender: TObject);
+    procedure BtnAddModalClick(Sender: TObject);
+    procedure BtnDelModalClick(Sender: TObject);
     procedure BtnStatusClick(Sender: TObject);
     procedure ListModalsDblClick(Sender: TObject);
     procedure CheckAutoStartPropertiesChange(Sender: TObject);
     procedure CheckSrvClick(Sender: TObject);
+    procedure BtnAddTaskClick(Sender: TObject);
+    procedure BtnDelTaskClick(Sender: TObject);
+    procedure ListTasksDblClick(Sender: TObject);
   private
     { Private declarations }
     FCanExit: Boolean;
@@ -115,7 +124,7 @@ implementation
 
 uses
   System.IniFiles, System.Win.Registry, System.SyncObjs, cxPCPainters, ULibFun,
-  UManagerGroup, UWaitIndicator, UBaseObject, UFormModal, UEqualizer,
+  UManagerGroup, UWaitIndicator, UBaseObject, UFormModal, UFormTask, UEqualizer,
   UServiceTTS, bass, USysConst;
 
 procedure WriteLog(const nEvent: string);
@@ -168,6 +177,7 @@ begin
     //form config
     TApplicationHelper.LoadFormConfig(Self, nIni);
     LoadListViewConfig(nIni, Self.Name, ListModals);
+    LoadListViewConfig(nIni, Self.Name, ListTasks);
 
     FSkinName := nIni.ReadString('Config', 'SkinName', '');
     CheckAutoRun.Checked := nIni.ReadBool('Config', 'AutoRun', False);
@@ -305,6 +315,10 @@ begin
 
     if ListModals.Tag = cTag_Ok then
       SaveListViewConfig(nIni, Self.Name, ListModals);
+    //xxxxx
+
+    if ListTasks.Tag = cTag_Ok then
+      SaveListViewConfig(nIni, Self.Name, ListTasks);
     //xxxxx
   finally
     nIni.Free;
@@ -448,11 +462,11 @@ end;
 procedure TfFormMain.BtnCopyClick(Sender: TObject);
 begin
   MemoLog.SelectAll;
-  MemoLog.CopyToClipboard;
-
   if MemoLog.SelLength > 0 then
+  begin
+    MemoLog.CopyToClipboard;
     TApplicationHelper.ShowMsg('日志已复制到剪切板', sHint);
-  //xxxxx
+  end;
 end;
 
 procedure TfFormMain.BtnClearClick(Sender: TObject);
@@ -627,8 +641,13 @@ begin
 end;
 
 procedure TfFormMain.CheckAutoStartPropertiesChange(Sender: TObject);
+var
+  nCtl: TWinControl;
 begin
-  TComponent(Sender).Tag := cTag_Ok;
+  nCtl := TWinControl(Sender);
+  if nCtl.Focused then
+    nCtl.Tag := cTag_Ok;
+  //xxxxx
 end;
 
 //Date: 2024-12-20
@@ -677,6 +696,12 @@ begin
   begin
     ListModals.Tag := cTag_Ok;
     LoadModals(ListModals);
+  end;
+
+  if (NewPage = SheetTask) and (ListTasks.Tag <> cTag_Ok) then
+  begin
+    ListTasks.Tag := cTag_Ok;
+    LoadTasks(ListTasks);
   end;
 end;
 
@@ -732,7 +757,7 @@ end;
 
 //Date: 2024-12-22
 //Desc: 新增模板
-procedure TfFormMain.BtnAddClick(Sender: TObject);
+procedure TfFormMain.BtnAddModalClick(Sender: TObject);
 begin
   if LoadVoiceList() and AddModal() then
     LoadModals(ListModals);
@@ -761,7 +786,7 @@ end;
 
 //Date: 2024-12-25
 //Desc: 删除模板
-procedure TfFormMain.BtnDelClick(Sender: TObject);
+procedure TfFormMain.BtnDelModalClick(Sender: TObject);
 var
   nStr, nID: string;
   nIdx: Integer;
@@ -782,6 +807,62 @@ begin
       ListModals.ItemIndex := nIdx
     else
       ListModals.ItemIndex := nIdx - 1;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+//Date: 2025-01-03
+//Desc: 新增计划
+procedure TfFormMain.BtnAddTaskClick(Sender: TObject);
+begin
+  if AddTask() then
+    LoadTasks(ListTasks);
+  //xxxxx
+end;
+
+//Date: 2025-01-03
+//Desc: 编辑计划
+procedure TfFormMain.ListTasksDblClick(Sender: TObject);
+var
+  nStr: string;
+  nIdx: Integer;
+begin
+  nIdx := ListTasks.ItemIndex;
+  if nIdx < 0 then
+    Exit;
+  //invalid
+
+  nStr := ListTasks.Items[nIdx].Caption;
+  if EditTask(nStr) then
+  begin
+    LoadTasks(ListTasks);
+    ListTasks.ItemIndex := nIdx;
+  end;
+end;
+
+//Date: 2025-01-03
+//Desc: 删除计划
+procedure TfFormMain.BtnDelTaskClick(Sender: TObject);
+var
+  nStr, nID: string;
+  nIdx: Integer;
+begin
+  nIdx := ListTasks.ItemIndex;
+  if nIdx < 0 then
+    Exit;
+  //invalid
+
+  nID := ListTasks.Items[nIdx].Caption;
+  nStr := Format('确定要删除名称为 %s 的计划吗?', [nID]);
+  if TApplicationHelper.QueryDlg(nStr, '询问', Handle) then
+  begin
+    gEqualizer.DeleteModal(nID);
+    LoadTasks(ListTasks);
+
+    if ListTasks.Items.Count > nIdx then
+      ListTasks.ItemIndex := nIdx
+    else
+      ListTasks.ItemIndex := nIdx - 1;
   end;
 end;
 

@@ -66,6 +66,25 @@ type
     FRever: Integer;
   end;
 
+  TTaskType = (etYear, etMonth, etDay, etHour, etMin, etSecond);
+  //计划类型
+
+  PEqualizerTask = ^TEqualizerTask;
+  //语音播放计划
+
+  TEqualizerTask = record
+    FEnabled: Boolean;                             //是否有效
+    FType: TTaskType;                              //计划类型
+    FID: string;                                   //计划标识
+    FModal: string;                                //语音模板
+    FText: string;                                 //文本内容
+
+    FDateFix: Boolean;                             //固定时间
+    FDate: TDateTime;                              //播放时间
+    FDateLast: TDateTime;                          //上次播放
+    FDateNext: TDateTime;                          //下次播放
+  end;
+
   TEqualizer = class(TObject)
   private
     FChanged: Boolean;
@@ -81,14 +100,18 @@ type
     {*均衡数据*}
     FModals: TList;
     {*模板列表*}
+    FTasks: TList;
+    {*计划任务*}
     FSyncLock: TCriticalSection;
     {*同步锁定*}
   protected
     function GetChan(const id: Cardinal; nNoUsed: Boolean): Integer;
     function GetModal(const nID: string; const nDef: Boolean): PEqualizerModal;
+    function GetTask(const nID: string): PEqualizerTask;
     {*检索数据*}
     procedure DisposeChan(const nIdx: Integer; nFree, nClear: Boolean);
     procedure ClearModals(const nFree: Boolean);
+    procedure ClearTasks(const nFree: Boolean);
     {*释放资源*}
   public
     constructor Create;
@@ -118,6 +141,12 @@ type
     function FindModal(const nID: string): TEqualizerModal;
     procedure DeleteModal(const nID: string);
     {*语音模板*}
+    procedure AddTask(const nTask: PEqualizerTask);
+    function FindTask(const nID: string): TEqualizerTask;
+    procedure DeleteTask(const nID: string);
+    function TaskDate2Desc(const nTask: PEqualizerTask): string;
+    {*播放计划*}
+    property Tasks: TList read FTasks;
     property Modals: TList read FModals;
     property Channels: TList read FChannels;
     property FirstChan: PEqualizerChan read FChanFirst;
@@ -153,6 +182,7 @@ begin
 
   FChannels := TList.Create;
   FModals := TList.Create;
+  FTasks := TList.Create;
   FSyncLock := TCriticalSection.Create;
 
   FChanFirst := NewChan();
@@ -170,6 +200,7 @@ begin
   FChannels.Free;
 
   ClearModals(True);
+  ClearTasks(True);
   FSyncLock.Free;
   inherited;
 end;
@@ -288,6 +319,23 @@ begin
     FreeAndNil(FModals)
   else
     FModals.Clear;
+end;
+
+//Date: 2025-01-05
+//Parm: 释放对象
+//Desc: 清空计划列表
+procedure TEqualizer.ClearTasks(const nFree: Boolean);
+var
+  nIdx: Integer;
+begin
+  for nIdx := FTasks.Count - 1 downto 0 do
+    Dispose(PEqualizerTask(FTasks[nIdx]));
+  //xxxxx
+
+  if nFree then
+    FreeAndNil(FTasks)
+  else
+    FTasks.Clear;
 end;
 
 //Date: 2024-12-20
@@ -571,6 +619,7 @@ function TEqualizer.LoadConfig(const nFile: string): Boolean;
 var
   nIdx: Integer;
   nModal: PEqualizerModal;
+  nTask: PEqualizerTask;
   nRoot, nNode: ISuperObject;
   nArray: TSuperArray;
 begin
@@ -627,6 +676,36 @@ begin
       end;
     end;
 
+    //--------------------------------------------------------------------------
+    ClearTasks(False);
+    //init task list
+
+    nArray := nRoot.A['tasks'];
+    if Assigned(nArray) then
+    begin
+      for nIdx := 0 to nArray.Length - 1 do
+      begin
+        New(nTask);
+        FTasks.Add(nTask);
+
+        with nTask^ do
+        begin
+          FEnabled := True;
+          FID := nArray[nIdx].S['id'];
+          FType := TTaskType(nArray[nIdx].I['type']);
+          FModal := nArray[nIdx].S['modal'];
+          FText := nArray[nIdx].S['text'];
+
+          FDate := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['date']);
+          FDateFix := nArray[nIdx].B['datefix'];
+          if not FDateFix then
+            FDateLast := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datelast']);
+          //间隔播放时,需加载上次播放时间
+          FDateNext := 0;
+        end;
+      end;
+    end;
+
     FChanged := False;
     //set flag
     Result := True;
@@ -642,6 +721,7 @@ procedure TEqualizer.SaveConfig(const nFile: string; nReset: Boolean);
 var
   nIdx: Integer;
   nModal: PEqualizerModal;
+  nTask: PEqualizerTask;
   nRoot, nNode: ISuperObject;
   nArray: TSuperArray;
 begin
@@ -693,6 +773,33 @@ begin
       //add modal
     end;
 
+    //--------------------------------------------------------------------------
+    nRoot.O['tasks'] := SO('[]');
+    nArray := nRoot.A['tasks'];
+    for nIdx := 0 to FTasks.Count - 1 do
+    begin
+      nTask := FTasks[nIdx];
+      if not nTask.FEnabled then
+        Continue;
+      //invalid
+
+      nNode := SO();
+      with nTask^ do
+      begin
+        nNode.S['id'] := FID;
+        nNode.I['type'] := Ord(FType);
+        nNode.S['modal'] := FModal;
+
+        nNode.S['date'] := TDateTimeHelper.DateTime2Str(FDate);
+        nNode.B['datefix'] := FDateFix;
+        nNode.S['datelast'] := TDateTimeHelper.DateTime2Str(FDate);
+        nNode.S['text'] := FText;
+      end;
+
+      nArray.Add(nNode);
+      //add modal
+    end;
+
     TFile.WriteAllText(nFile, nRoot.AsJSon(True), TEncoding.UTF8);
     //save
 
@@ -704,6 +811,7 @@ begin
   end;
 end;
 
+//------------------------------------------------------------------------------
 //Date: 2024-12-23
 //Parm: 模板标识;默认
 //Desc: 查找标识nID的模板索引
@@ -808,6 +916,156 @@ begin
     if Assigned(nModal) then
     begin
       nModal.FEnabled := False;
+      FChanged := True;
+    end;
+  finally
+    FSyncLock.Leave;
+  end;
+end;
+
+//------------------------------------------------------------------------------
+//Date: 2025-01-05
+//Parm: 计划
+//Desc: 描述nTask的时间
+function TEqualizer.TaskDate2Desc(const nTask: PEqualizerTask): string;
+var
+  nY, nM, nD, nH, nMM, nSS, nMS: Word;
+begin
+  case nTask.FType of
+    etYear:
+      begin
+        Result := TDateTimeHelper.DateTime2Str(nTask.FDate);
+        Exit;
+      end;
+    etMonth:
+      if nTask.FDateFix then
+        Result := '每年的M月d日h点m分s秒'
+      else
+        Result := '每隔M个月的d日h点m分s秒';
+    etDay:
+      if nTask.FDateFix then
+        Result := '每月的d日h点m分s秒'
+      else
+        Result := '每隔d天的h点m分s秒';
+    etHour:
+      if nTask.FDateFix then
+        Result := '每天的h点m分s秒'
+      else
+        Result := '每隔h小时m分s秒';
+    etMin:
+      if nTask.FDateFix then
+        Result := '每小时的m分s秒'
+      else
+        Result := '每隔m分s秒';
+    etSecond:
+      if nTask.FDateFix then
+        Result := '每分钟的第s秒'
+      else
+        Result := '每隔s秒';
+  else
+    begin
+      Result := '';
+      Exit;
+    end;
+  end;
+
+  DecodeDate(nTask.FDate, nY, nM, nD);
+  DecodeTime(nTask.FDate, nH, nMM, nSS, nMS);
+
+  Result := StringReplace(Result, 'y', nY.toString, []);
+  Result := StringReplace(Result, 'M', nM.toString, []);
+  Result := StringReplace(Result, 'd', nD.toString, []);
+  Result := StringReplace(Result, 'h', nH.toString, []);
+  Result := StringReplace(Result, 'm', nMM.toString, []);
+
+  if nSS = 0 then
+    Result := Copy(Result, 1, Pos('s', Result) - 1)
+  else
+    Result := StringReplace(Result, 's', nSS.toString, []);
+end;
+
+//Date: 2025-01-05
+//Parm: 标识
+//Desc: 检索nID计划
+function TEqualizer.GetTask(const nID: string): PEqualizerTask;
+var
+  nIdx: Integer;
+begin
+  for nIdx := 0 to FTasks.Count - 1 do
+  begin
+    Result := FTasks[nIdx];
+    if CompareText(nID, Result.FID) = 0 then
+      Exit;
+    //has found
+  end;
+
+  Result := nil;
+end;
+
+//Date: 2025-01-05
+//Parm: 标识
+//Desc: 检索nID计划
+function TEqualizer.FindTask(const nID: string): TEqualizerTask;
+var
+  nTask: PEqualizerTask;
+begin
+  FSyncLock.Enter;
+  //xxxxx
+  try
+    nTask := GetTask(nID);
+    if Assigned(nTask) then
+    begin
+      Result := nTask^;
+      //复制数据
+    end
+    else
+    begin
+      Result.FID := '';
+      Result.FEnabled := False;
+    end;
+  finally
+    FSyncLock.Leave;
+  end;
+end;
+
+//Date: 2025-01-05
+//Parm: 计划
+//Desc: 新增计划
+procedure TEqualizer.AddTask(const nTask: PEqualizerTask);
+var
+  nData: PEqualizerTask;
+begin
+  FSyncLock.Enter;
+  try
+    nData := GetTask(nTask.FID);
+    if not Assigned(nData) then
+    begin
+      New(nData);
+      FTasks.Add(nData);
+    end;
+
+    nData^ := nTask^;
+    FChanged := True;
+    //set flag
+  finally
+    FSyncLock.Leave;
+  end;
+end;
+
+//Date: 2025-01-05
+//Parm: 标识
+//Desc: 删除nID计划
+procedure TEqualizer.DeleteTask(const nID: string);
+var
+  nTask: PEqualizerTask;
+begin
+  FSyncLock.Enter;
+  //xxxxx
+  try
+    nTask := GetTask(nID);
+    if Assigned(nTask) then
+    begin
+      nTask.FEnabled := False;
       FChanged := True;
     end;
   finally
