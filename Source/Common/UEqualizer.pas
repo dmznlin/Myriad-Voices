@@ -119,6 +119,7 @@ type
     {*创建释放*}
     function LoadConfig(const nFile: string): Boolean;
     procedure SaveConfig(const nFile: string; nReset: Boolean = True);
+    procedure ForceChange();
     {*读写配置*}
     class function InitBassLibrary: Boolean;
     class procedure FreeBassLibrary;
@@ -144,6 +145,7 @@ type
     procedure AddTask(const nTask: PEqualizerTask);
     function FindTask(const nID: string): TEqualizerTask;
     procedure DeleteTask(const nID: string);
+    procedure UpdateTask(const nNew: PEqualizerTask; nAction: Byte);
     function TaskDate2Desc(const nTask: PEqualizerTask): string;
     {*播放计划*}
     property Tasks: TList read FTasks;
@@ -612,6 +614,13 @@ begin
 end;
 
 //------------------------------------------------------------------------------
+//Date: 2025-01-06
+//Desc: 强制保存数据
+procedure TEqualizer.ForceChange;
+begin
+  FChanged := True;
+end;
+
 //Date: 2024-12-23
 //Parm: 配置文件
 //Desc: 载入配置文件
@@ -698,9 +707,7 @@ begin
 
           FDate := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['date']);
           FDateFix := nArray[nIdx].B['datefix'];
-          if not FDateFix then
-            FDateLast := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datelast']);
-          //间隔播放时,需加载上次播放时间
+          FDateLast := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datelast']);
           FDateNext := 0;
         end;
       end;
@@ -792,7 +799,7 @@ begin
 
         nNode.S['date'] := TDateTimeHelper.DateTime2Str(FDate);
         nNode.B['datefix'] := FDateFix;
-        nNode.S['datelast'] := TDateTimeHelper.DateTime2Str(FDate);
+        nNode.S['datelast'] := TDateTimeHelper.DateTime2Str(FDateLast);
         nNode.S['text'] := FText;
       end;
 
@@ -954,7 +961,7 @@ begin
         Result := '每隔h小时m分s秒';
     etMin:
       if nTask.FDateFix then
-        Result := '每小时的m分s秒'
+        Result := '每个小时的m分s秒'
       else
         Result := '每隔m分s秒';
     etSecond:
@@ -1045,6 +1052,9 @@ begin
     end;
 
     nData^ := nTask^;
+    nData.FDateNext := 0;
+    nData.FDateLast := 0; //重新计算播放时间
+
     FChanged := True;
     //set flag
   finally
@@ -1067,6 +1077,34 @@ begin
     begin
       nTask.FEnabled := False;
       FChanged := True;
+    end;
+  finally
+    FSyncLock.Leave;
+  end;
+end;
+
+//Date: 2025-01-08
+//Parm: 新数据;操作
+//Desc: 使用nNew更新nNew.FID
+procedure TEqualizer.UpdateTask(const nNew: PEqualizerTask; nAction: Byte);
+var
+  nTask: PEqualizerTask;
+begin
+  FSyncLock.Enter;
+  //xxxxx
+  try
+    nTask := GetTask(nNew.FID);
+    if Assigned(nTask) then
+    begin
+      case nAction of
+        1: //同步播放时间
+          nTask.FDateLast := nTask.FDateNext;
+      else
+        Exit;
+      end;
+
+      FChanged := True;
+      //set tag
     end;
   finally
     FSyncLock.Leave;

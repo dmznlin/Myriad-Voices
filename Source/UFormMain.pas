@@ -816,8 +816,10 @@ end;
 procedure TfFormMain.BtnAddTaskClick(Sender: TObject);
 begin
   if AddTask() then
+  begin
+    gVoiceManager.ResetNextTime();
     LoadTasks(ListTasks);
-  //xxxxx
+  end;
 end;
 
 //Date: 2025-01-03
@@ -835,6 +837,7 @@ begin
   nStr := ListTasks.Items[nIdx].Caption;
   if EditTask(nStr) then
   begin
+    gVoiceManager.ResetNextTime();
     LoadTasks(ListTasks);
     ListTasks.ItemIndex := nIdx;
   end;
