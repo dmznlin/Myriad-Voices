@@ -20,6 +20,7 @@ const
 
   {*常量定义*}
   cChan_Invlid = 0;
+  cDate_Invalid = 36925; //2001-02-03
 
 type
   PEqualizerChan = ^TEqualizerChan;
@@ -81,6 +82,7 @@ type
 
     FDateFix: Boolean;                             //固定时间
     FDate: TDateTime;                              //播放时间
+    FDateBase: TDateTime;                          //基准时间
     FDateLast: TDateTime;                          //上次播放
     FDateNext: TDateTime;                          //下次播放
   end;
@@ -707,6 +709,7 @@ begin
 
           FDate := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['date']);
           FDateFix := nArray[nIdx].B['datefix'];
+          FDateBase := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datebase']);
           FDateLast := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datelast']);
           FDateNext := 0;
         end;
@@ -799,6 +802,7 @@ begin
 
         nNode.S['date'] := TDateTimeHelper.DateTime2Str(FDate);
         nNode.B['datefix'] := FDateFix;
+        nNode.S['datebase'] := TDateTimeHelper.DateTime2Str(FDateBase);
         nNode.S['datelast'] := TDateTimeHelper.DateTime2Str(FDateLast);
         nNode.S['text'] := FText;
       end;
@@ -1099,6 +1103,8 @@ begin
       case nAction of
         1: //同步播放时间
           nTask.FDateLast := nTask.FDateNext;
+        2: //计划已失效
+          nTask.FDateLast := cDate_Invalid;
       else
         Exit;
       end;

@@ -43,6 +43,7 @@ type
     {*服务地址*}
     FStrickNext: TDateTime;
     {*整点报时*}
+    FTaskID: string;
     FTaskNext: TDateTime;
     {*播放计划*}
     FWorker: TThreadWorkerConfig;
@@ -57,6 +58,7 @@ type
     {*设置参数*}
     function TimeValid(const nDate, nNow: TDateTime): Boolean;
     function NextTaskTime(const nNow: TDateTime; var nID: string): TDateTime;
+    {*计划时间*}
     function NextStrickTime(const nNow: TDateTime; nFromNow: Boolean): TDateTime;
     procedure DoStrickHour(const nNow: TDateTime);
     procedure DoTaskVoice(const nNow: TDateTime);
@@ -98,10 +100,6 @@ const
   {*超时设置*}
   cTimeoutConn = 5 * 1000;
   cTimeoutRead = 3 * 1000;
-
-var
-  {*时间标签*}
-  gDateInvalid: TDateTime;
 
 procedure WriteLog(const nEvent: string);
 begin
@@ -203,13 +201,12 @@ end;
 
 procedure TVoiceManager.StartService;
 var
-  nStr: string;
   nNow: TDateTime;
 begin
   nNow := Now();
   FStrickNext := NextStrickTime(nNow, True);
   //报时初始化
-  FTaskNext := NextTaskTime(nNow, nStr);
+  FTaskNext := NextTaskTime(nNow, FTaskID);
   //计划播放
 
   gMG.FThreadPool.WorkerStart(Self);
@@ -296,6 +293,7 @@ end;
 //Desc: 重置计时
 procedure TVoiceManager.ResetNextTime;
 begin
+  FTaskID := '';
   FTaskNext := 0;
   FStrickNext := 0;
 end;
@@ -434,7 +432,8 @@ begin
   begin
     nMsg := StringReplace(nMsg, '$hr', nH.ToString, [rfReplaceAll, rfIgnoreCase]);
     //替换小时变量
-    PlayVoice(gEqualizer.FirstChan, @nModal, nMsg);
+    //PlayVoice(gEqualizer.FirstChan, @nModal, nMsg);
+    PlayVoice(nMsg, nModal.FID, False, False);
   end;
 end;
 
@@ -482,6 +481,27 @@ begin
    //超过1分钟视为超时
 end;
 
+//Date: 2025-01-09
+//Parm: 日期
+//Desc: 获取nDate的yyyy-MM-01
+function Month1Day(const nDate: TDateTime): TDateTime;
+var
+  nY, nM, nD: Word;
+begin
+  DecodeDate(nDate, nY, nM, nD);
+  Result := EncodeDate(nY, nM, 1);
+end;
+
+//Date: 2025-01-10
+//Parm: 两个时间
+//Desc: 计算nD1,nD2的时间差,按秒计
+function SecondDiff(nD1, nD2: TDateTime): Int64;
+begin
+  nD1 := IncMilliSecond(nD1, MilliSecondOf(nD1) * (-1));
+  nD2 := IncMilliSecond(nD2, MilliSecondOf(nD2) * (-1));
+  Result := Round(MilliSecondsBetween(nD1, nD2) / MSecsPerSec);
+end;
+
 //Date: 2025-01-06
 //Parm: 当前时间;任务标识
 //Desc: 依据当前时间,计算下次计划播放时间
@@ -490,6 +510,7 @@ function TVoiceManager.NextTaskTime(const nNow: TDateTime; var nID: string):
 var
   nIdx: Integer;
   nTask: PEqualizerTask;
+  nInt, nVal: Int64;
   nY, nM, nD, nH, nMM, nSS, nMS: Word;
   nY1, nM1, nD1, nH1, nMM1, nSS1, nMS1: Word;
 begin
@@ -503,9 +524,14 @@ begin
     for nIdx := gEqualizer.Tasks.Count - 1 downto 0 do
     begin
       nTask := gEqualizer.Tasks[nIdx];
-      if (not nTask.FEnabled) or (nTask.FDateLast = gDateInvalid) then
+      if (not nTask.FEnabled) or (nTask.FDateLast = cDate_Invalid) then
         Continue;
       //计划已无效
+
+      if (nTask.FDateNext > 0) and
+        (nTask.FType = etSecond) and (not nTask.FDateFix) then
+        nTask.FDateNext := 0;
+      //每隔s秒计时,每轮扫描都需要重新计算
 
       if (nTask.FDateNext > 0) and TimeValid(nTask.FDateNext, nNow) then
         Continue;
@@ -525,19 +551,16 @@ begin
         etYear: //定时
           if nTask.FDate < nNow then //已过时
           begin
-            if (nTask.FDateLast = 0) and TimeValid(nTask.FDate, nNow) then //未播放未超时
+            if (nTask.FDateLast = 0) and TimeValid(nTask.FDate, nNow) then
             begin
               nID := nTask.FID;
               Result := nTask.FDate;
-            end;
-
-            nTask.FDateLast := gDateInvalid;
-            gEqualizer.ForceChange();
-            //过时标记,并保存
-
-            if nID <> '' then
               Break;
-            //即刻播放
+            end; //未播放未超时
+
+            nTask.FDateLast := cDate_Invalid;
+            gEqualizer.ForceChange();
+            //过时记录
           end
           else
           begin
@@ -554,8 +577,32 @@ begin
             //下一年份
           end
           else
-          begin
+          begin //每隔M个月的d日h点m分s秒
+            if nTask.FDateBase >= nNow then
+            begin
+              nTask.FDateNext := nTask.FDateBase;
+              Continue;
+            end;
 
+            nTask.FDateNext := EncodeDate(nY, nM, nD1) +
+              EncodeTime(nH1, nMM1, nSS1, 0);
+            //当前月份的d日h点m分s秒
+
+            nInt := MonthsBetween(Month1Day(nTask.FDateNext), Month1Day(nTask.FDateBase));
+            //开始距当前的月份
+
+            nVal := 0;
+            if nM1 > 0 then //每隔nM1个月
+            begin
+              nVal := nInt mod nM1; //几个周期余几个月
+              if nVal > 0 then
+                nTask.FDateNext := IncMonth(nTask.FDateNext, nM1 - nVal);
+              //补月份差额
+            end;
+
+            if not TimeValid(nTask.FDateNext, nNow) then
+              nTask.FDateNext := IncMonth(nTask.FDateNext, nM1);
+            //本月d日已超时,进入下M个月d日
           end;
         etday:
           if nTask.FDateFix then //每月的d日h点m分s秒
@@ -568,8 +615,30 @@ begin
             //下一月份
           end
           else
-          begin
+          begin //每隔d天的h点m分s秒
+            if nTask.FDateBase >= nNow then
+            begin
+              nTask.FDateNext := nTask.FDateBase;
+              Continue;
+            end;
 
+            nTask.FDateNext := DateOf(nNow) + EncodeTime(nH1, nMM1, nSS1, 0);
+            //当天h点m分s秒
+
+            nInt := DaysBetween(DateOf(nTask.FDateNext), DateOf(nTask.FDateBase));
+            //开始距当前的天数
+
+            if nD1 > 0 then //每隔nD1天
+            begin
+              nVal := nInt mod nD1; //几个周期余几天
+              if nVal > 0 then
+                nTask.FDateNext := IncDay(nTask.FDateNext, nD1 - nVal);
+              //补天数差额
+            end;
+
+            if not TimeValid(nTask.FDateNext, nNow) then
+              nTask.FDateNext := IncDay(nTask.FDateNext, nD1);
+            //当天已超时,进入下d日
           end;
         ethour:
           if nTask.FDateFix then //每天的h点m分s秒
@@ -582,8 +651,28 @@ begin
             //明天
           end
           else
-          begin
+          begin //每隔h小时m分s秒
+            if nTask.FDateBase >= nNow then
+            begin
+              nTask.FDateNext := nTask.FDateBase;
+              Continue;
+            end;
 
+            nTask.FDateNext := nNow;
+            //当前时间
+
+            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
+            //开始距当前的秒数
+            nVal := nH1 * 3600 + nMM1 * 60 + nSS1;
+            //间隔秒数
+
+            if nVal > 0 then
+            begin
+              nInt := nInt mod nVal; //几个周期余几秒
+              if nInt > 0 then
+                nTask.FDateNext := IncSecond(nTask.FDateNext, nVal - nInt);
+              //补秒数差额
+            end;
           end;
         etmin:
           if nTask.FDateFix then //每小时的m分s秒
@@ -596,8 +685,28 @@ begin
             //下一小时
           end
           else
-          begin
+          begin //每隔m分s秒
+            if nTask.FDateBase >= nNow then
+            begin
+              nTask.FDateNext := nTask.FDateBase;
+              Continue;
+            end;
 
+            nTask.FDateNext := nNow;
+            //当前时间
+
+            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
+            //开始距当前的秒数
+            nVal := nMM1 * 60 + nSS1;
+            //间隔秒数
+
+            if nVal > 0 then
+            begin
+              nInt := nInt mod nVal; //几个周期余几秒
+              if nInt > 0 then
+                nTask.FDateNext := IncSecond(nTask.FDateNext, nVal - nInt);
+              //补秒数差额
+            end;
           end;
         etSecond:
           if nTask.FDateFix then //每分钟的第s秒
@@ -606,10 +715,33 @@ begin
             //今年本月触发时间
           end
           else
-          begin
+          begin //每隔s秒
+            if nTask.FDateBase >= nNow then
+            begin
+              nTask.FDateNext := nTask.FDateBase;
+              Continue;
+            end;
 
+            nTask.FDateNext := nNow;
+            //当前时间
+
+            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
+            //开始距当前的秒数
+
+            if nSS1 > 0 then
+            begin
+              nVal := nInt mod nSS1; //几个周期余几秒
+              if nVal > 0 then
+                nTask.FDateNext := IncSecond(nTask.FDateNext, nSS1 - nVal);
+              //补秒数差额
+            end;
           end;
       end;
+
+      if nTask.FDateNext > 0 then
+        nTask.FDateNext := IncMilliSecond(nTask.FDateNext,
+            MilliSecondOf(nTask.FDateNext) * (-1));
+      //删除毫秒
     end;
 
     //--------------------------------------------------------------------------
@@ -618,12 +750,13 @@ begin
       for nIdx := gEqualizer.Tasks.Count - 1 downto 0 do
       begin
         nTask := gEqualizer.Tasks[nIdx];
-        if (not nTask.FEnabled) or (nTask.FDateLast = gDateInvalid) then
+        if (not nTask.FEnabled) or (nTask.FDateLast = cDate_Invalid) then
           Continue;
         //计划已无效
 
-        if (nTask.FDateNext > 0) and (nTask.FDateNext < Result) and //更接近当前时间
-          (nTask.FDateNext <> nTask.FDateLast) then //该计划没执行过
+        if (nTask.FDateNext > 0) and
+          (nTask.FDateNext < Result) and //更接近当前时间
+            (nTask.FDateNext <> nTask.FDateLast) then //该计划时间没执行过
         begin
           nID := nTask.FID;
           Result := nTask.FDateNext;
@@ -645,26 +778,52 @@ end;
 //Desc: 播放计划语音
 procedure TVoiceManager.DoTaskVoice(const nNow: TDateTime);
 var
-  nID: string;
+  nIdx: Integer;
+  nList: TStrings;
   nTask: TEqualizerTask;
 begin
-  FTaskNext := NextTaskTime(nNow, nID);
-  //计划时间点和本次计划标识
+  nList := nil;
+  try
+    if FTaskID = '' then
+      Exit;
+    //没有计划
 
-  if nID = '' then
-    Exit;
-  //没有计划
+    nTask := gEqualizer.FindTask(FTaskID);
+    if not nTask.FEnabled then
+      Exit;
+    //无效计划
 
-  nTask := gEqualizer.FindTask(nID);
-  if not nTask.FEnabled then
-    Exit;
-  //无效计划
+    if (nTask.FType = etYear) and (nTask.FDate <= nNow) then
+      gEqualizer.UpdateTask(@nTask, 2)
+      //超时的固定时间
+    else
+      gEqualizer.UpdateTask(@nTask, 1);
+      //更新nTask.FDateLast
 
-  PlayVoice(nTask.FText, nTask.FModal, False, False);
-  //播放语音
+    if Pos('=', nTask.FText) > 1 then //包含参数
+    begin
+      nList := gMG.FObjectPool.Lock(TStrings) as TStrings;
+      nList.Text := nTask.FText;
 
-  gEqualizer.UpdateTask(@nTask, 1);
-  //更新nTask.FDateLast
+      for nIdx := nList.Count - 1 downto 0 do
+      begin
+        if (Trim(nList.Names[nIdx]) = '') or
+          (Trim(nList.ValueFromIndex[nIdx]) = '') then
+          nList.Delete(nIdx);
+        //无效参数
+      end;
+    end;
+
+    PlayVoice(nTask.FText, nTask.FModal, Assigned(nList) and (nList.Count > 0),
+        False);
+    //播放语音
+  finally
+    gMG.FObjectPool.Release(nList);
+    //xxxxx
+
+    FTaskNext := NextTaskTime(nNow, FTaskID);
+    //下次计划时间点和计划标识
+  end;
 end;
 
 //------------------------------------------------------------------------------
@@ -872,7 +1031,6 @@ end;
 
 initialization
   gVoiceManager := TVoiceManager.Create;
-  gDateInvalid := EncodeDate(2001, 2, 3);
 
 finalization
   FreeAndNil(gVoiceManager);

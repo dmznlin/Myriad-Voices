@@ -353,4 +353,8 @@ object FDM: TFDM
     Left = 32
     Top = 144
   end
+  object cxLocal1: TcxLocalizer
+    Left = 128
+    Top = 80
+  end
 end

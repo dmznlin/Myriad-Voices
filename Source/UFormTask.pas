@@ -14,7 +14,8 @@ uses
   dxSkinOffice2007Green, dxSkinOffice2019White, dxSkinSevenClassic, Vcl.Menus,
   cxCheckBox, Vcl.StdCtrls, cxButtons, cxMemo, cxTrackBar, dxWheelPicker,
   dxNumericWheelPicker, dxDateTimeWheelPicker, cxTextEdit, cxMaskEdit,
-  cxDropDownEdit, cxImageComboBox, cxLabel, cxGroupBox;
+  cxDropDownEdit, cxImageComboBox, cxLabel, cxGroupBox, Vcl.ComCtrls, dxCore,
+  cxDateUtils, cxCalendar, cxSpinEdit, cxTimeEdit;
 
 type
   TfFormTask = class(TForm)
@@ -31,6 +32,8 @@ type
     LabelDate: TcxLabel;
     EditText: TcxMemo;
     CheckLoop: TcxCheckBox;
+    EditBase: TcxDateEdit;
+    cxLabel4: TcxLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TrackDetailPropertiesGetPositionHint(Sender: TObject; const
@@ -80,6 +83,7 @@ begin
 
     FTask.FDateFix := True;
     FTask.FDate := Now();
+    FTask.FDateBase := FTask.FDate;
     ApplyTask(True);
 
     Result := ShowModal = mrOk;
@@ -180,6 +184,11 @@ end;
 
 procedure TfFormTask.CheckLoopClick(Sender: TObject);
 begin
+  EditBase.Enabled := CheckLoop.Checked;
+  if EditBase.Enabled and (EditBase.Text = '') then
+    EditBase.Date := Now();
+  //xxxxx
+
   FTask.FDateFix := not CheckLoop.Checked;
   ShowDateDesc();
 end;
@@ -240,9 +249,10 @@ begin
     begin
       EditID.Text := FID;
       EditText.Text := FText;
-
-      CheckLoop.Checked := not FDateFix;
       EditDate.DateTime := FDate;
+
+      EditBase.Date := FDateBase;
+      CheckLoop.Checked := not FDateFix;
       TrackDetail.Position := Ord(FType) + 1;
     end;
 
@@ -266,6 +276,7 @@ begin
     FModal := EditModal.EditText;
 
     FDate := EditDate.DateTime;
+    FDateBase := EditBase.Date;
     FDateFix := not CheckLoop.Checked;
     Result := True;
   end;

@@ -11,7 +11,8 @@ uses
   dxSkinsCore, dxSkinHighContrast, dxSkinMcSkin, dxSkinOffice2007Blue,
   dxSkinOffice2007Green, dxSkinOffice2019White, dxSkinSevenClassic, dxCore,
   IdContext, IdCustomHTTPServer, IdBaseComponent, IdComponent, IdCustomTCPServer,
-  IdHTTPServer, cxClasses, cxLookAndFeels, dxSkinsForm, cxImageList, cxGraphics;
+  IdHTTPServer, cxClasses, cxLookAndFeels, dxSkinsForm, cxImageList, cxGraphics,
+  cxLocalization;
 
 const
   {*Í¼±êË÷Òý*}
@@ -28,6 +29,7 @@ type
     dxSkin1: TdxSkinController;
     cxLF1: TcxLookAndFeelController;
     Server1: TIdHTTPServer;
+    cxLocal1: TcxLocalizer;
     procedure DataModuleCreate(Sender: TObject);
     procedure Server1CommandGet(AContext: TIdContext; nReq: TIdHTTPRequestInfo;
       nRes: TIdHTTPResponseInfo);

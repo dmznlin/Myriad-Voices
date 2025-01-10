@@ -260,6 +260,15 @@ begin
     Track8K.Position := F8K;
     TrackRever.Position := FRever;
   end;
+
+  nStr := gPath + 'local.ini';
+  if FileExists(nStr) then
+    with FDM.cxLocal1 do
+    begin
+      FileName := nStr;
+      Active := True;
+      Locale := 2052; //中文
+    end;
 end;
 
 //Date: 2024-12-20
@@ -341,6 +350,7 @@ begin
     nReg.Free;
   end;
 
+  FDM.StopServer();
   CheckSrv.Checked := False;
   //停止服务
 
