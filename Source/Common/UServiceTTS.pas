@@ -591,7 +591,6 @@ begin
             nInt := MonthsBetween(Month1Day(nTask.FDateNext), Month1Day(nTask.FDateBase));
             //开始距当前的月份
 
-            nVal := 0;
             if nM1 > 0 then //每隔nM1个月
             begin
               nVal := nInt mod nM1; //几个周期余几个月

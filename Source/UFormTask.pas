@@ -270,6 +270,14 @@ begin
       Exit;
     end;
 
+    if CheckLoop.Checked and (EditBase.Date < cDate_Invalid) then
+    begin
+      TApplicationHelper.ShowMsg('最小日期: ' + TDateTimeHelper.Date2Str(cDate_Invalid),
+        sHint);
+      ActiveControl := EditBase;
+      Exit;
+    end;
+
     FEnabled := True;
     FID := EditID.Text;
     FText := EditText.Text;

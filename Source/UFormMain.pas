@@ -869,7 +869,7 @@ begin
   nStr := Format('确定要删除名称为 %s 的计划吗?', [nID]);
   if TApplicationHelper.QueryDlg(nStr, '询问', Handle) then
   begin
-    gEqualizer.DeleteModal(nID);
+    gEqualizer.DeleteTask(nID);
     LoadTasks(ListTasks);
 
     if ListTasks.Items.Count > nIdx then
