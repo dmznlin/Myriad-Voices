@@ -3,7 +3,7 @@ object fFormTask: TfFormTask
   Top = 0
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
-  ClientHeight = 442
+  ClientHeight = 462
   ClientWidth = 390
   Color = clBtnFace
   Font.Charset = GB2312_CHARSET
@@ -17,7 +17,7 @@ object fFormTask: TfFormTask
   OnCreate = FormCreate
   DesignSize = (
     390
-    442)
+    462)
   PixelsPerInch = 96
   TextHeight = 12
   object Group1: TcxGroupBox
@@ -26,7 +26,7 @@ object fFormTask: TfFormTask
     Anchors = [akLeft, akTop, akRight, akBottom]
     Caption = #21442#25968
     TabOrder = 0
-    Height = 394
+    Height = 414
     Width = 369
     object cxLabel1: TcxLabel
       Left = 12
@@ -60,7 +60,7 @@ object fFormTask: TfFormTask
     end
     object EditDate: TdxDateTimeWheelPicker
       Left = 12
-      Top = 195
+      Top = 185
       Hint = #20351#29992#40736#26631#28378#36718#21487#20197#24555#36895#35843#25972
       ParentShowHint = False
       Properties.Wheels = [pwYear, pwMonth, pwDay, pwHour, pwMinute, pwSecond]
@@ -73,7 +73,7 @@ object fFormTask: TfFormTask
     end
     object TrackDetail: TcxTrackBar
       Left = 12
-      Top = 312
+      Top = 302
       Hint = #35843#25972#26102#38388#31934#24230
       ParentShowHint = False
       Position = 1
@@ -96,7 +96,7 @@ object fFormTask: TfFormTask
     end
     object LabelDate: TcxLabel
       Left = 12
-      Top = 175
+      Top = 165
       Caption = #25773#25918#26102#38388':'
       Transparent = True
     end
@@ -106,13 +106,13 @@ object fFormTask: TfFormTask
       Properties.MaxLength = 800
       Properties.ScrollBars = ssVertical
       TabOrder = 8
-      Height = 65
+      Height = 55
       Width = 345
     end
     object CheckLoop: TcxCheckBox
       Left = 12
-      Top = 338
-      Caption = #25773#25918#26102#38388#37319#29992'"'#38388#38548'"'#35745#26102','#20174#19979#38754#30340#26102#38388#24320#22987':'
+      Top = 328
+      Caption = #25773#25918#26102#38388#37319#29992'"'#38388#38548'"'#35745#26102'.'
       Style.TransparentBorder = False
       TabOrder = 9
       Transparent = True
@@ -120,25 +120,50 @@ object fFormTask: TfFormTask
     end
     object EditBase: TcxDateEdit
       Left = 76
-      Top = 360
+      Top = 350
       Enabled = False
       Properties.DisplayFormat = 'yyyy-MM-dd hh:mm:ss'
       Properties.EditFormat = 'yyyy-MM-dd hh:mm:ss'
       Properties.Kind = ckDateTime
-      Properties.View = cavModern
+      Properties.WeekNumbers = True
       TabOrder = 10
-      Width = 280
+      Width = 145
     end
     object cxLabel4: TcxLabel
       Left = 12
-      Top = 362
+      Top = 352
       Caption = #24320#22987#26102#38388':'
+      Transparent = True
+    end
+    object EditDelay: TcxTimeEdit
+      Left = 76
+      Top = 378
+      Enabled = False
+      TabOrder = 12
+      Width = 145
+    end
+    object cxLabel5: TcxLabel
+      Left = 12
+      Top = 380
+      Caption = #24310#21518#26102#38388':'
+      Transparent = True
+    end
+    object cxLabel6: TcxLabel
+      Left = 225
+      Top = 352
+      Caption = #31354#30333#20026#26381#21153#21551#21160#26102#38388'.'
+      Transparent = True
+    end
+    object cxLabel7: TcxLabel
+      Left = 225
+      Top = 380
+      Caption = #24320#22987#26102#38388#31354#30333#26102#26377#25928'.'
       Transparent = True
     end
   end
   object BtnOK: TcxButton
     Left = 220
-    Top = 407
+    Top = 427
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -148,7 +173,7 @@ object fFormTask: TfFormTask
   end
   object BtnExit: TcxButton
     Left = 306
-    Top = 407
+    Top = 427
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]

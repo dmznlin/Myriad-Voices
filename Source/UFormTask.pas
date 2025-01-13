@@ -34,6 +34,10 @@ type
     CheckLoop: TcxCheckBox;
     EditBase: TcxDateEdit;
     cxLabel4: TcxLabel;
+    EditDelay: TcxTimeEdit;
+    cxLabel5: TcxLabel;
+    cxLabel6: TcxLabel;
+    cxLabel7: TcxLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TrackDetailPropertiesGetPositionHint(Sender: TObject; const
@@ -184,12 +188,12 @@ end;
 
 procedure TfFormTask.CheckLoopClick(Sender: TObject);
 begin
+  EditDelay.Enabled := CheckLoop.Checked;
   EditBase.Enabled := CheckLoop.Checked;
-  if EditBase.Enabled and (EditBase.Text = '') then
-    EditBase.Date := Now();
-  //xxxxx
-
   FTask.FDateFix := not CheckLoop.Checked;
+
+  if EditBase.Enabled and (EditBase.Text = '') and (not FTask.FBaseNow) then
+    EditBase.Date := Now();
   ShowDateDesc();
 end;
 
@@ -252,6 +256,11 @@ begin
       EditDate.DateTime := FDate;
 
       EditBase.Date := FDateBase;
+      EditDelay.Time := FBaseNowDelay;
+      if FBaseNow then
+        EditBase.Text := '';
+      //使用当前时间
+
       CheckLoop.Checked := not FDateFix;
       TrackDetail.Position := Ord(FType) + 1;
     end;
@@ -270,10 +279,11 @@ begin
       Exit;
     end;
 
-    if CheckLoop.Checked and (EditBase.Date < cDate_Invalid) then
+    if CheckLoop.Checked and
+      (EditBase.Text <> '') and (EditBase.Date < cDate_Invalid) then
     begin
       TApplicationHelper.ShowMsg('最小日期: ' + TDateTimeHelper.Date2Str(cDate_Invalid),
-        sHint);
+          sHint);
       ActiveControl := EditBase;
       Exit;
     end;
@@ -284,8 +294,14 @@ begin
     FModal := EditModal.EditText;
 
     FDate := EditDate.DateTime;
-    FDateBase := EditBase.Date;
     FDateFix := not CheckLoop.Checked;
+    FBaseNowDelay := EditDelay.Time;
+    FBaseNow := EditBase.Text = '';
+
+    if FBaseNow then
+      FDateBase := Now()
+    else
+      FDateBase := EditBase.Date;
     Result := True;
   end;
 end;

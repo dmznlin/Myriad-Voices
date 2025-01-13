@@ -8,7 +8,7 @@ interface
 
 uses
   Winapi.Windows, System.Classes, System.SyncObjs, System.SysUtils, superobject,
-  bass, System.IOUtils, ULibFun, Vcl.Forms, UManagerGroup;
+  System.DateUtils, bass, System.IOUtils, ULibFun, Vcl.Forms, UManagerGroup;
 
 const
   {*均衡标识*}
@@ -83,6 +83,8 @@ type
     FDateFix: Boolean;                             //固定时间
     FDate: TDateTime;                              //播放时间
     FDateBase: TDateTime;                          //基准时间
+    FBaseNow: Boolean;                             //基准为当前时间
+    FBaseNowDelay: TDateTime;                      //当前时间延迟
     FDateLast: TDateTime;                          //上次播放
     FDateNext: TDateTime;                          //下次播放
   end;
@@ -148,6 +150,7 @@ type
     function FindTask(const nID: string): TEqualizerTask;
     procedure DeleteTask(const nID: string);
     procedure UpdateTask(const nNew: PEqualizerTask; nAction: Byte);
+    procedure UpdateDateBaseNow(const nTask: PEqualizerTask = nil);
     function TaskDate2Desc(const nTask: PEqualizerTask): string;
     {*播放计划*}
     property Tasks: TList read FTasks;
@@ -699,7 +702,7 @@ begin
         New(nTask);
         FTasks.Add(nTask);
 
-        with nTask^ do
+        with nTask^, TDateTimeHelper do
         begin
           FEnabled := True;
           FID := nArray[nIdx].S['id'];
@@ -707,11 +710,14 @@ begin
           FModal := nArray[nIdx].S['modal'];
           FText := nArray[nIdx].S['text'];
 
-          FDate := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['date']);
+          FDate := Str2DateTime(nArray[nIdx].S['date']);
           FDateFix := nArray[nIdx].B['datefix'];
-          FDateBase := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datebase']);
-          FDateLast := TDateTimeHelper.Str2DateTime(nArray[nIdx].S['datelast']);
-          FDateNext := 0;
+          FBaseNow := nArray[nIdx].B['basenow'];
+
+          FBaseNowDelay := Str2DateTime(nArray[nIdx].S['basedelay']);
+          FDateBase := Str2DateTime(nArray[nIdx].S['datebase']);
+          //开始时间基准
+          FDateLast := Str2DateTime(nArray[nIdx].S['datelast']);
         end;
       end;
     end;
@@ -794,16 +800,18 @@ begin
       //invalid
 
       nNode := SO();
-      with nTask^ do
+      with nTask^, TDateTimeHelper do
       begin
         nNode.S['id'] := FID;
         nNode.I['type'] := Ord(FType);
         nNode.S['modal'] := FModal;
 
-        nNode.S['date'] := TDateTimeHelper.DateTime2Str(FDate);
+        nNode.S['date'] := DateTime2Str(FDate);
         nNode.B['datefix'] := FDateFix;
-        nNode.S['datebase'] := TDateTimeHelper.DateTime2Str(FDateBase);
-        nNode.S['datelast'] := TDateTimeHelper.DateTime2Str(FDateLast);
+        nNode.B['basenow'] := FBaseNow;
+        nNode.S['datebase'] := DateTime2Str(FDateBase);
+        nNode.S['datelast'] := DateTime2Str(FDateLast);
+        nNode.S['basedelay'] := DateTime2Str(FBaseNowDelay);
         nNode.S['text'] := FText;
       end;
 
@@ -965,7 +973,7 @@ begin
         Result := '每隔h小时m分s秒';
     etMin:
       if nTask.FDateFix then
-        Result := '每个小时的m分s秒'
+        Result := '每个小时的第m分s秒'
       else
         Result := '每隔m分s秒';
     etSecond:
@@ -1056,11 +1064,8 @@ begin
     end;
 
     nData^ := nTask^;
-    nData.FDateNext := 0;
-    nData.FDateLast := 0; //重新计算播放时间
-
+    UpdateDateBaseNow(nTask);
     FChanged := True;
-    //set flag
   finally
     FSyncLock.Leave;
   end;
@@ -1112,6 +1117,49 @@ begin
       FChanged := True;
       //set tag
     end;
+  finally
+    FSyncLock.Leave;
+  end;
+end;
+
+//Date: 2025-01-11
+//Desc: 更新database为当前时间
+procedure TEqualizer.UpdateDateBaseNow(const nTask: PEqualizerTask);
+var
+  nIdx: Integer;
+  nNow: TDateTime;
+  nH, nM, nS, nMS: Word;
+
+  procedure DoUpdate(const nT: PEqualizerTask);
+  begin
+    nT.FDateLast := 0;
+    nT.FDateNext := 0;
+    //reset time tag
+
+    if nT.FBaseNow then
+    begin
+      DecodeTime(nT.FBaseNowDelay, nH, nM, nS, nMS);
+      nT.FDateBase := IncSecond(nNow, nH * 3600 + nM * 60 + nS);
+      //当前时间 + 延迟
+    end;
+  end;
+
+begin
+  nNow := Now();
+  nNow := IncMilliSecond(nNow, MilliSecondOf(nNow) * (-1));
+  //删除毫秒
+
+  if Assigned(nTask) then
+  begin
+    DoUpdate(nTask);
+    Exit;
+  end;
+
+  FSyncLock.Enter;
+  try
+    for nIdx := FTasks.Count - 1 downto 0 do
+      DoUpdate(FTasks[nIdx]);
+    //xxxxx
   finally
     FSyncLock.Leave;
   end;

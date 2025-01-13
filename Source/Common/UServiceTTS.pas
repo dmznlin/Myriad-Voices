@@ -56,7 +56,6 @@ type
     {*释放资源*}
     procedure SetRemoteURL(nURL: string);
     {*设置参数*}
-    function TimeValid(const nDate, nNow: TDateTime): Boolean;
     function NextTaskTime(const nNow: TDateTime; var nID: string): TDateTime;
     {*计划时间*}
     function NextStrickTime(const nNow: TDateTime; nFromNow: Boolean): TDateTime;
@@ -78,8 +77,6 @@ type
     procedure StartService();
     procedure StopService();
     {*启停服务*}
-    procedure ResetNextTime();
-    {*重置计时*}
     property Voices: TList read FVoices;
     property SyncLock: TCriticalSection read FSyncLock;
     property RemoteURL: string read FRemoteURL write SetRemoteURL;
@@ -203,6 +200,9 @@ procedure TVoiceManager.StartService;
 var
   nNow: TDateTime;
 begin
+  gEqualizer.UpdateDateBaseNow();
+  //更新当前时间
+
   nNow := Now();
   FStrickNext := NextStrickTime(nNow, True);
   //报时初始化
@@ -289,15 +289,6 @@ begin
 end;
 
 //------------------------------------------------------------------------------
-//Date: 2025-01-07
-//Desc: 重置计时
-procedure TVoiceManager.ResetNextTime;
-begin
-  FTaskID := '';
-  FTaskNext := 0;
-  FStrickNext := 0;
-end;
-
 //Date: 2024-12-31
 //Parm: 配置;线程本体
 //Desc: 在线程中执行合成任务
@@ -468,17 +459,27 @@ end;
 
 //------------------------------------------------------------------------------
 //Date: 2025-01-08
-//Parm: 待检查时间;当前时间
-//Desc: 检查nDate是否还有效(未过时,未超时)
-function TVoiceManager.TimeValid(const nDate, nNow: TDateTime): Boolean;
+//Parm: 计划;当前时间;将来时间
+//Desc: 检查nTask.FDateNext 或 nNew 是否还有效(未过时,未超时)
+function TimeValid(const nTask: PEqualizerTask; const nNow: TDateTime; nNew:
+  TDateTime = 0): Boolean;
 begin
-  Result := nDate >= nNow;
+  if Assigned(nTask) then
+  begin
+    Result := nTask.FDateNext <> nTask.FDateLast;
+    if not Result then
+      Exit;
+    //已播放
+    nNew := nTask.FDateNext;
+  end;
+
+  Result := nNew >= nNow;
   //未过时
 
   if not Result then
-    Result := (DateTimeToMilliseconds(nNow) - DateTimeToMilliseconds(nDate))
+    Result := (DateTimeToMilliseconds(nNow) - DateTimeToMilliseconds(nNew))
       div (MSecsPerSec * SecsPerMin) < 1;
-   //超过1分钟视为超时
+  //超过1分钟视为超时
 end;
 
 //Date: 2025-01-09
@@ -493,13 +494,18 @@ begin
 end;
 
 //Date: 2025-01-10
-//Parm: 两个时间
-//Desc: 计算nD1,nD2的时间差,按秒计
-function SecondDiff(nD1, nD2: TDateTime): Int64;
+//Parm: 当前时间;过去时间
+//Desc: 计算nNow,nOld的时间差,按秒计
+function SecondDiff(nNow, nOld: TDateTime): Int64;
 begin
-  nD1 := IncMilliSecond(nD1, MilliSecondOf(nD1) * (-1));
-  nD2 := IncMilliSecond(nD2, MilliSecondOf(nD2) * (-1));
-  Result := Round(MilliSecondsBetween(nD1, nD2) / MSecsPerSec);
+  nNow := IncMilliSecond(nNow, MilliSecondOf(nNow) * (-1));
+  nOld := IncMilliSecond(nOld, MilliSecondOf(nOld) * (-1));
+  //删除毫秒
+
+  if nNow <= nOld then
+    Result := 0
+  else
+    Result := Round(MilliSecondsBetween(nNow, nOld) / MSecsPerSec);
 end;
 
 //Date: 2025-01-06
@@ -533,7 +539,12 @@ begin
         nTask.FDateNext := 0;
       //每隔s秒计时,每轮扫描都需要重新计算
 
-      if (nTask.FDateNext > 0) and TimeValid(nTask.FDateNext, nNow) then
+      if (nTask.FDateNext > 0) and (nTask.FDateNext = nTask.FDateLast) and
+        (SecondDiff(nNow, nTask.FDateLast) > 1) then
+        nTask.FDateNext := 0;
+      //已播报完毕,延迟1秒后重新计算
+
+      if (nTask.FDateNext > 0) and TimeValid(nTask, nNow) then
         Continue;
       //未超时,无需重新计算下次播放时间
 
@@ -551,7 +562,7 @@ begin
         etYear: //定时
           if nTask.FDate < nNow then //已过时
           begin
-            if (nTask.FDateLast = 0) and TimeValid(nTask.FDate, nNow) then
+            if (nTask.FDateLast = 0) and TimeValid(nil, nNow, nTask.FDate) then
             begin
               nID := nTask.FID;
               Result := nTask.FDate;
@@ -572,17 +583,15 @@ begin
             nTask.FDateNext := EncodeDateTime(nY, nM1, nD1, nH1, nMM1, nSS1, 0);
             //今年触发时间
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncYear(nTask.FDateNext);
             //下一年份
           end
           else
           begin //每隔M个月的d日h点m分s秒
             if nTask.FDateBase >= nNow then
-            begin
-              nTask.FDateNext := nTask.FDateBase;
               Continue;
-            end;
+            //未开始
 
             nTask.FDateNext := EncodeDate(nY, nM, nD1) +
               EncodeTime(nH1, nMM1, nSS1, 0);
@@ -599,7 +608,7 @@ begin
               //补月份差额
             end;
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncMonth(nTask.FDateNext, nM1);
             //本月d日已超时,进入下M个月d日
           end;
@@ -609,17 +618,15 @@ begin
             nTask.FDateNext := EncodeDateTime(nY, nM, nD1, nH1, nMM1, nSS1, 0);
             //今年本月触发时间
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncMonth(nTask.FDateNext);
             //下一月份
           end
           else
           begin //每隔d天的h点m分s秒
             if nTask.FDateBase >= nNow then
-            begin
-              nTask.FDateNext := nTask.FDateBase;
               Continue;
-            end;
+            //未开始
 
             nTask.FDateNext := DateOf(nNow) + EncodeTime(nH1, nMM1, nSS1, 0);
             //当天h点m分s秒
@@ -635,7 +642,7 @@ begin
               //补天数差额
             end;
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncDay(nTask.FDateNext, nD1);
             //当天已超时,进入下d日
           end;
@@ -645,102 +652,126 @@ begin
             nTask.FDateNext := EncodeDateTime(nY, nM, nD, nH1, nMM1, nSS1, 0);
             //当天触发时间
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncDay(nTask.FDateNext);
             //明天
           end
           else
           begin //每隔h小时m分s秒
-            if nTask.FDateBase >= nNow then
-            begin
-              nTask.FDateNext := nTask.FDateBase;
-              Continue;
-            end;
-
-            nTask.FDateNext := nNow;
-            //当前时间
-
-            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
-            //开始距当前的秒数
             nVal := nH1 * 3600 + nMM1 * 60 + nSS1;
             //间隔秒数
 
-            if nVal > 0 then
+            if nVal < 1 then //间隔0无效
+            begin
+              nTask.FDateLast := cDate_Invalid;
+              gEqualizer.ForceChange();
+              Continue;
+            end;
+
+            nTask.FDateNext := 0;
+            nInt := SecondDiff(nNow, nTask.FDateBase);
+            //开始距当前的秒数
+
+            if nInt < nVal then
+            begin
+              nTask.FDateNext := IncSecond(nTask.FDateBase, nVal);
+              //补足一个周期
+            end
+            else
             begin
               nInt := nInt mod nVal; //几个周期余几秒
-              if nInt > 0 then
-                nTask.FDateNext := IncSecond(nTask.FDateNext, nVal - nInt);
-              //补秒数差额
+              if nInt < 1 then
+                nTask.FDateNext := nNow
+              else
+                nTask.FDateNext := IncSecond(nNow, nVal - nInt); //补秒数差额
             end;
           end;
         etmin:
           if nTask.FDateFix then //每小时的m分s秒
           begin
             nTask.FDateNext := EncodeDateTime(nY, nM, nD, nH, nMM1, nSS1, 0);
-            //当前时辰内触发时间
+            //当前小时内
 
-            if not TimeValid(nTask.FDateNext, nNow) then
+            if not TimeValid(nTask, nNow) then //时间无效
               nTask.FDateNext := IncHour(nTask.FDateNext);
             //下一小时
           end
           else
           begin //每隔m分s秒
-            if nTask.FDateBase >= nNow then
-            begin
-              nTask.FDateNext := nTask.FDateBase;
-              Continue;
-            end;
-
-            nTask.FDateNext := nNow;
-            //当前时间
-
-            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
-            //开始距当前的秒数
             nVal := nMM1 * 60 + nSS1;
             //间隔秒数
 
-            if nVal > 0 then
+            if nVal < 1 then //间隔0无效
+            begin
+              nTask.FDateLast := cDate_Invalid;
+              gEqualizer.ForceChange();
+              Continue;
+            end;
+
+            nTask.FDateNext := 0;
+            nInt := SecondDiff(nNow, nTask.FDateBase);
+            //开始距当前的秒数
+
+            if nInt < nVal then
+            begin
+              nTask.FDateNext := IncSecond(nTask.FDateBase, nVal);
+              //补足一个周期
+            end
+            else
             begin
               nInt := nInt mod nVal; //几个周期余几秒
-              if nInt > 0 then
-                nTask.FDateNext := IncSecond(nTask.FDateNext, nVal - nInt);
-              //补秒数差额
+              if nInt < 1 then
+                nTask.FDateNext := nNow
+              else
+                nTask.FDateNext := IncSecond(nNow, nVal - nInt); //补秒数差额
             end;
           end;
         etSecond:
           if nTask.FDateFix then //每分钟的第s秒
           begin
             nTask.FDateNext := EncodeDateTime(nY, nM, nD, nH, nMM, nSS1, 0);
-            //今年本月触发时间
+            //当前分钟内
           end
           else
           begin //每隔s秒
-            if nTask.FDateBase >= nNow then
+            if nSS1 < 1 then //间隔0无效
             begin
-              nTask.FDateNext := nTask.FDateBase;
+              nTask.FDateLast := cDate_Invalid;
+              gEqualizer.ForceChange();
               Continue;
             end;
 
-            nTask.FDateNext := nNow;
-            //当前时间
-
-            nInt := SecondDiff(nTask.FDateNext, nTask.FDateBase);
+            nTask.FDateNext := 0;
+            nInt := SecondDiff(nNow, nTask.FDateBase);
             //开始距当前的秒数
 
-            if nSS1 > 0 then
+            if nInt < nSS1 then
+            begin
+              nTask.FDateNext := IncSecond(nTask.FDateBase, nSS1);
+              //补足一个周期
+            end
+            else
             begin
               nVal := nInt mod nSS1; //几个周期余几秒
-              if nVal > 0 then
-                nTask.FDateNext := IncSecond(nTask.FDateNext, nSS1 - nVal);
-              //补秒数差额
+              if nVal < 1 then
+                nTask.FDateNext := nNow
+              else
+                nTask.FDateNext := IncSecond(nNow, nSS1 - nVal); //补秒数差额
             end;
           end;
       end;
 
       if nTask.FDateNext > 0 then
+      begin
         nTask.FDateNext := IncMilliSecond(nTask.FDateNext,
             MilliSecondOf(nTask.FDateNext) * (-1));
-      //删除毫秒
+        //删除毫秒
+
+        {$IFDEF DEBUG}
+        WriteLog(TStringHelper.Enum2Str<TTaskType>(nTask.FType) + ': ' +
+            TDateTimeHelper.DateTime2Str(nTask.FDateNext));
+        {$ENDIF}
+      end;
     end;
 
     //--------------------------------------------------------------------------
@@ -749,13 +780,13 @@ begin
       for nIdx := gEqualizer.Tasks.Count - 1 downto 0 do
       begin
         nTask := gEqualizer.Tasks[nIdx];
-        if (not nTask.FEnabled) or (nTask.FDateLast = cDate_Invalid) then
+        if (not nTask.FEnabled) or
+          (nTask.FDateLast = cDate_Invalid) or (nTask.FDateNext < 1) then
           Continue;
-        //计划已无效
+        //计划无效,无执行时间
 
-        if (nTask.FDateNext > 0) and
-          (nTask.FDateNext < Result) and //更接近当前时间
-            (nTask.FDateNext <> nTask.FDateLast) then //该计划时间没执行过
+        if (nTask.FDateNext < Result) and //更接近当前时间
+          (nTask.FDateNext <> nTask.FDateLast) then //该计划时间没执行过
         begin
           nID := nTask.FID;
           Result := nTask.FDateNext;
@@ -768,7 +799,8 @@ begin
   end;
 
   if nID <> '' then
-    WriteLog(Format('播放计划: %s 时间: %s', [nID, TDateTimeHelper.DateTime2Str(Result)]));
+    with TDateTimeHelper do
+      WriteLog(Format('播放计划: %s 时间: %s', [nID, DateTime2Str(Result)]));
   //xxxxx
 end;
 
