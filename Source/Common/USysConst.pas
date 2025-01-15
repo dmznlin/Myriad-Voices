@@ -24,6 +24,8 @@ resourcestring
   sHint     = '提示';
   sParamTag = #9;
 
+  //机器锁文件
+  sFileKey  = 'Config.lck';
   //模板文件
   sFileModal = 'modals.json';
 

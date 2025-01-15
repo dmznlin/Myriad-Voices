@@ -466,10 +466,11 @@ function TimeValid(const nTask: PEqualizerTask; const nNow: TDateTime; nNew:
 begin
   if Assigned(nTask) then
   begin
-    Result := nTask.FDateNext <> nTask.FDateLast;
+    Result := (nTask.FDateLast > 0) and (nTask.FDateNext <> nTask.FDateLast);
+    //计划已播放
+
     if not Result then
       Exit;
-    //已播放
     nNew := nTask.FDateNext;
   end;
 
@@ -544,7 +545,7 @@ begin
         nTask.FDateNext := 0;
       //已播报完毕,延迟1秒后重新计算
 
-      if (nTask.FDateNext > 0) and TimeValid(nTask, nNow) then
+      if (nTask.FDateNext > 0) and TimeValid(nil, nNow, nTask.FDateNext) then
         Continue;
       //未超时,无需重新计算下次播放时间
 

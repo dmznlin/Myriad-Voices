@@ -222,20 +222,11 @@ begin
   end;
 
   //verify date
-  nStr := gPath + 'Config.key';
+  nStr := gPath + sFileKey;
   if TApplicationHelper.IsSystemExpire(nStr) then
   begin
-    if gApp.FActive.GetParam('AutoRenewal') = sFlag_Yes then//自动续约
-    begin
-      TApplicationHelper.AddExpireDate(nStr, TDateTimeHelper.Date2Str(Now() +
-          365), True);
-      //xxxxx
-    end
-    else
-    begin
-      WriteLog('system has expired.');
-      CheckSrv.Enabled := False;
-    end;
+    WriteLog('system has expired.');
+    CheckSrv.Enabled := False;
   end;
 
   nStr := Trim(gApp.FActive.GetParam('SrvTTS'));

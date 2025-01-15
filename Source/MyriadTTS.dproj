@@ -4,7 +4,7 @@
         <ProjectVersion>19.2</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Application</AppType>
@@ -106,6 +106,7 @@
         <VerInfo_Build>9</VerInfo_Build>
         <VerInfo_Keys>CompanyName=Runsoft工作室;FileDescription=千音语音合成;FileVersion=1.0.0.9;InternalName=MyriadTTS;LegalCopyright=GPL公共许可;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=万语千音多引言文本转语音系统;LastCompiledTime=2024-12-23 10:41:33</VerInfo_Keys>
         <Icon_MainIcon>MyriadTTS_Icon.ico</Icon_MainIcon>
+        <VerInfo_Release>1</VerInfo_Release>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
