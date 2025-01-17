@@ -15,22 +15,15 @@ uses
   cxCheckBox, Vcl.StdCtrls, cxButtons, cxMemo, cxTrackBar, dxWheelPicker,
   dxNumericWheelPicker, dxDateTimeWheelPicker, cxTextEdit, cxMaskEdit,
   cxDropDownEdit, cxImageComboBox, cxLabel, cxGroupBox, Vcl.ComCtrls, dxCore,
-  cxDateUtils, cxCalendar, cxSpinEdit, cxTimeEdit;
+  cxDateUtils, cxCalendar, cxSpinEdit, cxTimeEdit, dxBevel;
 
 type
   TfFormTask = class(TForm)
-    Group1: TcxGroupBox;
+    GroupTime: TcxGroupBox;
     BtnOK: TcxButton;
     BtnExit: TcxButton;
-    cxLabel1: TcxLabel;
-    EditModal: TcxImageComboBox;
-    cxLabel2: TcxLabel;
-    EditID: TcxTextEdit;
     EditDate: TdxDateTimeWheelPicker;
     TrackDetail: TcxTrackBar;
-    cxLabel3: TcxLabel;
-    LabelDate: TcxLabel;
-    EditText: TcxMemo;
     CheckLoop: TcxCheckBox;
     EditBase: TcxDateEdit;
     cxLabel4: TcxLabel;
@@ -38,6 +31,14 @@ type
     cxLabel5: TcxLabel;
     cxLabel6: TcxLabel;
     cxLabel7: TcxLabel;
+    cxGroupBox1: TcxGroupBox;
+    EditText: TcxMemo;
+    cxLabel3: TcxLabel;
+    cxLabel1: TcxLabel;
+    cxLabel2: TcxLabel;
+    EditID: TcxTextEdit;
+    EditModal: TcxImageComboBox;
+    dxBevel1: TdxBevel;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TrackDetailPropertiesGetPositionHint(Sender: TObject; const
@@ -88,6 +89,7 @@ begin
     FTask.FDateFix := True;
     FTask.FDate := Now();
     FTask.FDateBase := FTask.FDate;
+    FTask.FBaseNowDelay := EncodeTime(0, 0, 0, 0);
     ApplyTask(True);
 
     Result := ShowModal = mrOk;
@@ -183,7 +185,7 @@ end;
 function TfFormTask.ShowDateDesc(): string;
 begin
   Result := gEqualizer.TaskDate2Desc(@FTask);
-  LabelDate.Caption := '播放时间: ' + Result;
+  GroupTime.Caption := '播放时间: ' + Result;
 end;
 
 procedure TfFormTask.CheckLoopClick(Sender: TObject);

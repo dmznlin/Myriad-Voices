@@ -1064,7 +1064,7 @@ begin
     end;
 
     nData^ := nTask^;
-    UpdateDateBaseNow(nTask);
+    UpdateDateBaseNow(nData);
     FChanged := True;
   finally
     FSyncLock.Leave;

@@ -18,13 +18,13 @@ object fFormMain: TfFormMain
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 12
-  object BevelTop: TBevel
+  object BevelTop: TdxBevel
     Left = 0
     Top = 48
     Width = 584
     Height = 3
     Align = alTop
-    Shape = bsSpacer
+    Shape = dxbsNone
   end
   object PanelTitle: TPanel
     Left = 0
@@ -808,7 +808,7 @@ object fFormMain: TfFormMain
           Height = 22
           Anchors = [akTop, akRight]
           Caption = #22797#21046
-          TabOrder = 0
+          TabOrder = 1
           OnClick = BtnCopyClick
         end
         object BtnClear: TcxButton
@@ -818,7 +818,7 @@ object fFormMain: TfFormMain
           Height = 22
           Anchors = [akTop, akRight]
           Caption = #28165#31354
-          TabOrder = 1
+          TabOrder = 2
           OnClick = BtnClearClick
         end
         object CheckSrv: TcxCheckBox
@@ -826,7 +826,7 @@ object fFormMain: TfFormMain
           Top = 6
           Caption = #21551#21160#26381#21153
           Style.TransparentBorder = False
-          TabOrder = 2
+          TabOrder = 3
           OnClick = CheckSrvClick
         end
         object CheckSyncUI: TcxCheckBox
@@ -834,7 +834,7 @@ object fFormMain: TfFormMain
           Top = 6
           Caption = #26174#31034#26085#24535
           Style.TransparentBorder = False
-          TabOrder = 3
+          TabOrder = 4
           OnClick = CheckSyncUIClick
         end
         object BtnStatus: TcxButton
@@ -844,7 +844,7 @@ object fFormMain: TfFormMain
           Height = 22
           Anchors = [akTop, akRight]
           Caption = #29366#24577
-          TabOrder = 4
+          TabOrder = 0
           OnClick = BtnStatusClick
         end
       end
@@ -916,7 +916,7 @@ object fFormMain: TfFormMain
           Properties.Images = FDM.Images16
           Properties.Items = <>
           Properties.OnChange = EditThemesPropertiesChange
-          TabOrder = 4
+          TabOrder = 3
           Width = 170
         end
       end
@@ -978,7 +978,7 @@ object fFormMain: TfFormMain
         Top = 125
         Anchors = [akLeft, akTop, akRight, akBottom]
         Caption = #27169#26495#21015#34920
-        TabOrder = 0
+        TabOrder = 1
         Height = 220
         Width = 559
         object dxPanel3: TdxPanel
@@ -988,7 +988,7 @@ object fFormMain: TfFormMain
           Height = 30
           Align = alBottom
           Frame.Borders = [bTop]
-          TabOrder = 0
+          TabOrder = 1
           DesignSize = (
             555
             29)
@@ -999,7 +999,7 @@ object fFormMain: TfFormMain
             Height = 22
             Anchors = [akTop, akRight]
             Caption = #21024#38500
-            TabOrder = 0
+            TabOrder = 1
             OnClick = BtnDelModalClick
           end
           object BtnAddModal: TcxButton
@@ -1009,7 +1009,7 @@ object fFormMain: TfFormMain
             Height = 22
             Anchors = [akTop, akRight]
             Caption = #28155#21152
-            TabOrder = 1
+            TabOrder = 0
             OnClick = BtnAddModalClick
           end
         end
@@ -1062,7 +1062,7 @@ object fFormMain: TfFormMain
           Style.Edges = [bLeft, bTop, bRight, bBottom]
           StyleFocused.BorderStyle = cbsNone
           StyleHot.BorderStyle = cbsNone
-          TabOrder = 1
+          TabOrder = 0
           ViewStyle = vsReport
           OnDblClick = ListModalsDblClick
         end
@@ -1072,7 +1072,7 @@ object fFormMain: TfFormMain
         Top = 12
         Anchors = [akLeft, akTop, akRight]
         Caption = #22343#34913#35843#33410
-        TabOrder = 1
+        TabOrder = 0
         Height = 110
         Width = 559
         object Track125: TcxTrackBar
@@ -1149,7 +1149,7 @@ object fFormMain: TfFormMain
           Properties.Max = 20
           Properties.ShowPositionHint = True
           Properties.OnChange = Track125PropertiesChange
-          TabOrder = 7
+          TabOrder = 5
           Transparent = True
           Height = 25
           Width = 210
@@ -1177,7 +1177,7 @@ object fFormMain: TfFormMain
           Height = 30
           Align = alBottom
           Frame.Borders = [bTop]
-          TabOrder = 0
+          TabOrder = 1
           DesignSize = (
             555
             29)
@@ -1188,7 +1188,7 @@ object fFormMain: TfFormMain
             Height = 22
             Anchors = [akTop, akRight]
             Caption = #21024#38500
-            TabOrder = 0
+            TabOrder = 1
             OnClick = BtnDelTaskClick
           end
           object BtnAddTask: TcxButton
@@ -1198,7 +1198,7 @@ object fFormMain: TfFormMain
             Height = 22
             Anchors = [akTop, akRight]
             Caption = #28155#21152
-            TabOrder = 1
+            TabOrder = 0
             OnClick = BtnAddTaskClick
           end
         end
@@ -1242,7 +1242,7 @@ object fFormMain: TfFormMain
           Style.Edges = [bLeft, bTop, bRight, bBottom]
           StyleFocused.BorderStyle = cbsNone
           StyleHot.BorderStyle = cbsNone
-          TabOrder = 1
+          TabOrder = 0
           ViewStyle = vsReport
           OnDblClick = ListTasksDblClick
         end

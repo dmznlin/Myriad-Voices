@@ -43,7 +43,7 @@ object fFormModal: TfFormModal
       Properties.Images = FDM.Images16
       Properties.Items = <>
       Properties.OnChange = EditLangPropertiesChange
-      TabOrder = 1
+      TabOrder = 0
       Width = 280
     end
     object cxLabel2: TcxLabel
@@ -60,7 +60,7 @@ object fFormModal: TfFormModal
       Properties.DropDownRows = 20
       Properties.Images = FDM.Images16
       Properties.Items = <>
-      TabOrder = 3
+      TabOrder = 2
       Width = 280
     end
     object EditLoop: TcxSpinEdit
@@ -87,7 +87,7 @@ object fFormModal: TfFormModal
       Top = 95
       Properties.MaxValue = 86400000.000000000000000000
       Properties.MinValue = 1000.000000000000000000
-      TabOrder = 7
+      TabOrder = 5
       Value = 1000
       Width = 60
     end
@@ -101,7 +101,7 @@ object fFormModal: TfFormModal
       Left = 22
       Top = 156
       Properties.MaxLength = 800
-      TabOrder = 9
+      TabOrder = 10
       Text = #29616#22312#26159#21271#20140#26102#38388' $hr:00'
       Width = 330
     end
@@ -109,7 +109,7 @@ object fFormModal: TfFormModal
       Left = 22
       Top = 206
       Properties.MaxLength = 800
-      TabOrder = 10
+      TabOrder = 12
       Text = #29616#22312#26159#21271#20140#26102#38388' $hr:30'
       Width = 330
     end
@@ -118,7 +118,7 @@ object fFormModal: TfFormModal
       Top = 136
       Caption = #25972#28857#25253#26102
       Style.TransparentBorder = False
-      TabOrder = 11
+      TabOrder = 9
       Transparent = True
     end
     object CheckHalf: TcxCheckBox
@@ -126,7 +126,7 @@ object fFormModal: TfFormModal
       Top = 186
       Caption = #21322#28857#25253#26102
       Style.TransparentBorder = False
-      TabOrder = 12
+      TabOrder = 11
       Transparent = True
     end
     object cxLabel6: TcxLabel
@@ -156,7 +156,7 @@ object fFormModal: TfFormModal
       Properties.Max = 100
       Properties.Min = 1
       Properties.ShowPositionHint = True
-      TabOrder = 16
+      TabOrder = 13
       Transparent = True
       Height = 25
       Width = 285
@@ -170,7 +170,7 @@ object fFormModal: TfFormModal
       Properties.Max = 100
       Properties.Min = 1
       Properties.ShowPositionHint = True
-      TabOrder = 17
+      TabOrder = 15
       Transparent = True
       Height = 25
       Width = 285
@@ -184,7 +184,7 @@ object fFormModal: TfFormModal
       Properties.Max = 100
       Properties.Min = 1
       Properties.ShowPositionHint = True
-      TabOrder = 18
+      TabOrder = 17
       Transparent = True
       Height = 25
       Width = 285
@@ -211,7 +211,7 @@ object fFormModal: TfFormModal
       Caption = #27979#35797
       OptionsImage.ImageIndex = 6
       OptionsImage.Images = FDM.Images16
-      TabOrder = 21
+      TabOrder = 19
       OnClick = BtnTestClick
     end
   end

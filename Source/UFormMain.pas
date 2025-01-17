@@ -16,7 +16,7 @@ uses
   dxSkinSevenClassic, dxBarBuiltInMenu, cxGeometry, dxFramedControl, Vcl.Menus,
   Vcl.ComCtrls, Vcl.ExtCtrls, dxStatusBar, cxTrackBar, cxListView, cxTreeView,
   cxMaskEdit, cxDropDownEdit, cxImageComboBox, cxGroupBox, cxTextEdit, cxMemo,
-  cxCheckBox, Vcl.StdCtrls, cxButtons, dxPanel, cxPC, cxLabel;
+  cxCheckBox, Vcl.StdCtrls, cxButtons, dxPanel, cxPC, cxLabel, dxBevel;
 
 type
   TfFormMain = class(TForm)
@@ -45,7 +45,6 @@ type
     CheckAutoMin: TcxCheckBox;
     Group2: TcxGroupBox;
     TreeDevices: TcxTreeView;
-    BevelTop: TBevel;
     dxPanel2: TdxPanel;
     BtnDevices: TcxButton;
     TimerDelay: TTimer;
@@ -72,6 +71,7 @@ type
     BtnDelTask: TcxButton;
     BtnAddTask: TcxButton;
     ListTasks: TcxListView;
+    BevelTop: TdxBevel;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure TimerNowTimer(Sender: TObject);
