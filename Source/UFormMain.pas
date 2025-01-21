@@ -448,12 +448,29 @@ begin
         Inc(nNum);
     //xxxxx
 
-    MemoLog.Lines.Add(FixData('Ä£°å:', gEqualizer.Modals.Count));
-    MemoLog.Lines.Add(FixData('Í¨µÀ:', nNum.ToString + '/' +
+    MemoLog.Lines.Add(FixData('Modals:', gEqualizer.Modals.Count));
+    MemoLog.Lines.Add(FixData('Channels:', nNum.ToString + '/' +
         gEqualizer.Channels.Count.ToString));
     //xxxxx
   finally
     gEqualizer.SyncLock.Leave;
+  end;
+
+  with TObjectStatusHelper do
+  try
+    gVoiceManager.SyncLock.Enter;
+    nNum := 0;
+
+    for nIdx := gVoiceManager.VoiceData.Count - 1 downto 0 do
+      if PVoiceData(gVoiceManager.VoiceData[nIdx]).FUsed then
+        Inc(nNum);
+    //xxxxx
+
+    MemoLog.Lines.Add(FixData('VoiceData:', nNum.ToString + '/' +
+        gVoiceManager.VoiceData.Count.ToString));
+    //xxxxx
+  finally
+    gVoiceManager.SyncLock.Leave;
   end;
 
   gMG.GetManagersStatus(MemoLog.Lines);

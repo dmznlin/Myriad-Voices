@@ -78,6 +78,7 @@ type
     procedure StopService();
     {*启停服务*}
     property Voices: TList read FVoices;
+    property VoiceData: TList read FDataList;
     property SyncLock: TCriticalSection read FSyncLock;
     property RemoteURL: string read FRemoteURL write SetRemoteURL;
     {*属性相关*}
