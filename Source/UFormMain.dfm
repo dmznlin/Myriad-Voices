@@ -1159,9 +1159,6 @@ object fFormMain: TfFormMain
     object SheetTask: TcxTabSheet
       Caption = #25773#25918#35745#21010
       ImageIndex = 15
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       DesignSize = (
         584
         349)

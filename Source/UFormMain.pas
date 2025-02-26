@@ -161,6 +161,7 @@ begin
   LoadFormConfig();
 
   //delay service
+  TimerDelay.Tag := 0;
   TimerDelay.Enabled := True;
 end;
 
@@ -266,13 +267,22 @@ end;
 //Desc: 延迟启动
 procedure TfFormMain.TimerDelayTimer(Sender: TObject);
 begin
-  TimerDelay.Enabled := False;
-  //run once
-
   if not TEqualizer.InitBassLibrary then //init bass
   begin
+    if TimerDelay.Tag < 10 then //延迟初始化音频库
+    begin
+      TimerDelay.Interval := 1000;
+      //调整计时频率
+      wPage1.Enabled := False;
+      TimerDelay.Tag := TimerDelay.Tag + 1;
+      Exit;
+    end;
+
     CheckSrv.Enabled := False;
   end;
+
+  wPage1.Enabled := True;
+  TimerDelay.Enabled := False;
 
   //所有管理器进入工作状态
   gMG.RunAfterApplicationStart;
@@ -368,7 +378,7 @@ procedure TfFormMain.TrayIcon1DblClick(Sender: TObject);
 begin
   if not Visible then
     Visible := True;
-  //xxxxx
+  Application.BringToFront;
 end;
 
 //Desc: 显示日志
