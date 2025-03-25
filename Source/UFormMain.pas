@@ -271,13 +271,14 @@ begin
   begin
     if TimerDelay.Tag < 10 then //延迟初始化音频库
     begin
-      TimerDelay.Interval := 1000;
+      TimerDelay.Interval := 1500;
       //调整计时频率
       wPage1.Enabled := False;
       TimerDelay.Tag := TimerDelay.Tag + 1;
       Exit;
     end;
 
+    FCanExit := True;
     CheckSrv.Enabled := False;
   end;
 
